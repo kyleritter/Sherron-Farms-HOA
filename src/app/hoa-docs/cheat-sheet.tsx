@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown, FileText } from "lucide-react";
-import { fetchDocumentSignedUrl } from "@/lib/documents";
+import type { DocumentTarget } from "@/components/document-panel";
 
 const CHEAT_SHEET = [
   {
@@ -112,35 +112,21 @@ function Cell({ text }: { text: string }) {
   );
 }
 
-async function openSourceDocument(documentName: string) {
-  // Open the tab synchronously (on the click gesture) so the browser
-  // doesn't block it while the signed URL is fetched, then redirect it.
-  const win = window.open("", "_blank");
-  try {
-    const url = await fetchDocumentSignedUrl(documentName);
-    if (win) {
-      win.location.href = url;
-    } else {
-      window.open(url, "_blank");
-    }
-  } catch {
-    win?.close();
-  }
-}
-
 function DocHeaderLink({
   label,
   doc,
+  onOpenDocument,
 }: {
   label: string;
   doc: string;
+  onOpenDocument: (target: DocumentTarget) => void;
 }) {
   return (
     <button
       type="button"
-      onClick={() => openSourceDocument(doc)}
-      className="inline-flex items-center gap-1 text-left hover:underline"
-      title={`Open ${label} (PDF, opens in a new tab)`}
+      onClick={() => onOpenDocument({ name: doc, page: 1 })}
+      className="inline-flex items-center gap-1 text-left uppercase hover:underline"
+      title={`Open ${label} (PDF)`}
     >
       <span>{label}</span>
       <FileText size={12} className="shrink-0 opacity-80" />
@@ -148,7 +134,11 @@ function DocHeaderLink({
   );
 }
 
-export default function CheatSheet() {
+export default function CheatSheet({
+  onOpenDocument,
+}: {
+  onOpenDocument: (target: DocumentTarget) => void;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -165,8 +155,8 @@ export default function CheatSheet() {
           <p className="mt-0.5 text-xs text-neutral-600">
             Where to find things across the Articles of Incorporation,
             CC&amp;Rs, Bylaws, and ARC Guidelines. Unofficial — always
-            confirm against the source PDFs (linked in the table headers,
-            or in the sidebar) for anything binding.
+            confirm against the source PDFs (linked in the table headers)
+            for anything binding.
           </p>
         </div>
         <ChevronDown
@@ -177,24 +167,26 @@ export default function CheatSheet() {
         />
       </button>
 
-      {open && (
-        <div className="overflow-x-auto border-t border-neutral-200">
-          <table className="w-full min-w-[720px] border-collapse text-sm">
-            <thead>
-              <tr className="text-left text-xs font-semibold uppercase tracking-wide">
-                <th className="bg-neutral-900 px-3 py-2 text-neutral-100">
-                  Topic
+      <div className="overflow-x-auto border-t border-neutral-200">
+        <table className="w-full min-w-[720px] border-collapse text-sm">
+          <thead>
+            <tr className="text-left text-xs font-semibold uppercase tracking-wide">
+              <th className="bg-neutral-900 px-3 py-2 text-neutral-100" />
+              {COLUMNS.map((col) => (
+                <th
+                  key={col.key}
+                  className="bg-neutral-900 px-3 py-2 text-neutral-100"
+                >
+                  <DocHeaderLink
+                    label={col.label}
+                    doc={col.doc}
+                    onOpenDocument={onOpenDocument}
+                  />
                 </th>
-                {COLUMNS.map((col) => (
-                  <th
-                    key={col.key}
-                    className="bg-neutral-900 px-3 py-2 text-neutral-100"
-                  >
-                    <DocHeaderLink label={col.label} doc={col.doc} />
-                  </th>
-                ))}
-              </tr>
-            </thead>
+              ))}
+            </tr>
+          </thead>
+          {open && (
             <tbody>
               {CHEAT_SHEET.map((row, i) => (
                 <tr
@@ -221,9 +213,9 @@ export default function CheatSheet() {
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
-      )}
+          )}
+        </table>
+      </div>
     </section>
   );
 }

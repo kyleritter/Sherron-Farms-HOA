@@ -4,7 +4,6 @@ import { useState } from "react";
 import AppNav from "@/components/app-nav";
 import ChatPanel from "@/components/chat-panel";
 import DocumentPanel, { type DocumentTarget } from "@/components/document-panel";
-import DocumentsSidebar from "@/components/documents-sidebar";
 import CheatSheet from "./cheat-sheet";
 
 export default function HoaDocsClient({ isAdmin }: { isAdmin: boolean }) {
@@ -29,18 +28,16 @@ export default function HoaDocsClient({ isAdmin }: { isAdmin: boolean }) {
             </div>
 
             <div className="mt-6 pb-2">
-              <CheatSheet />
+              <CheatSheet onOpenDocument={setDocTarget} />
             </div>
           </div>
         </div>
 
-        <div className="hidden w-[340px] shrink-0 border-l border-neutral-200 bg-white md:block">
-          {docTarget ? (
+        {docTarget && (
+          <div className="hidden w-[340px] shrink-0 border-l border-neutral-200 bg-white md:block">
             <DocumentPanel target={docTarget} onClose={() => setDocTarget(null)} />
-          ) : (
-            <DocumentsSidebar onSelect={setDocTarget} />
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
