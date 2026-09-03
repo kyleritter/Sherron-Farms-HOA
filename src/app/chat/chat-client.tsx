@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, FormEvent } from "react";
 import { Send } from "lucide-react";
-import ReactMarkdown, { type Components } from "react-markdown";
+import ReactMarkdown, { type Components, defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import AppNav from "@/components/app-nav";
 import DocumentPanel, { type DocumentTarget } from "./document-panel";
@@ -215,6 +215,15 @@ export default function ChatClient({ isAdmin }: { isAdmin: boolean }) {
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={markdownComponents}
+                      // react-markdown strips unrecognized URL schemes by
+                      // default (only http/https/mailto/tel/relative survive)
+                      // -- our citation:// links need an explicit pass-through
+                      // or they silently become dead/empty hrefs.
+                      urlTransform={(url) =>
+                        url.startsWith("citation://")
+                          ? url
+                          : defaultUrlTransform(url)
+                      }
                     >
                       {linkifyCitations(m.content) || "…"}
                     </ReactMarkdown>
