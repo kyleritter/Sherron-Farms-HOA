@@ -34,7 +34,7 @@ export default function HoaDocsClient({ isAdmin }: { isAdmin: boolean }) {
           </div>
         </div>
 
-        <div className="hidden w-[340px] shrink-0 border-l border-neutral-200 bg-white lg:block">
+        <div className="hidden w-[340px] shrink-0 border-l border-neutral-200 bg-white md:block">
           {docTarget ? (
             <DocumentPanel target={docTarget} onClose={() => setDocTarget(null)} />
           ) : (
