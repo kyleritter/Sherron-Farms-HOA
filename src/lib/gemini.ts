@@ -6,10 +6,20 @@ export const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 // deploying -- Gemini model IDs get renamed/retired periodically.
 export const GEMINI_MODEL = "gemini-2.0-flash";
 
+// text-embedding-004 was retired; gemini-embedding-001 is the current
+// stable embedding model. It defaults to 3072 dimensions, so
+// outputDimensionality pins it to 768 to match the hoa_document_chunks
+// and ideas.embedding column types (and match_hoa_chunks/match_idea_topic's
+// VECTOR(768) signatures) -- verify this is still current before
+// re-ingesting anything, since Gemini model IDs get renamed/retired.
+const EMBEDDING_MODEL = "gemini-embedding-001";
+const EMBEDDING_DIMENSIONS = 768;
+
 export async function embedText(text: string): Promise<number[]> {
   const res = await ai.models.embedContent({
-    model: "text-embedding-004",
+    model: EMBEDDING_MODEL,
     contents: text,
+    config: { outputDimensionality: EMBEDDING_DIMENSIONS },
   });
   return res.embeddings![0].values!;
 }

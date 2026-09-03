@@ -38,9 +38,14 @@ export async function POST(req: NextRequest) {
   const latestMessage = messages[messages.length - 1].content;
 
   // 2. Embed user question
+  // text-embedding-004 was retired; gemini-embedding-001 is current.
+  // outputDimensionality pins it to 768 to match hoa_document_chunks'
+  // VECTOR(768) column and match_hoa_chunks' signature -- keep this in
+  // sync with src/lib/gemini.ts's EMBEDDING_MODEL/EMBEDDING_DIMENSIONS.
   const embedResponse = await ai.models.embedContent({
-    model: "text-embedding-004",
+    model: "gemini-embedding-001",
     contents: latestMessage,
+    config: { outputDimensionality: 768 },
   });
   const queryEmbedding = embedResponse.embeddings![0].values;
 

@@ -40,9 +40,13 @@ DOCS_DIRECTORY = "./documents_raw"
 
 
 def get_embedding(text: str) -> list[float]:
+    # text-embedding-004 was retired; gemini-embedding-001 is current.
+    # output_dimensionality pins it to 768 to match hoa_document_chunks'
+    # VECTOR(768) column -- keep in sync with src/lib/gemini.ts.
     response = ai_client.models.embed_content(
-        model="text-embedding-004",
+        model="gemini-embedding-001",
         contents=text,
+        config={"output_dimensionality": 768},
     )
     return response.embeddings[0].values
 
