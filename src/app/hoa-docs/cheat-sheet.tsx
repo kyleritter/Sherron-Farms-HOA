@@ -143,39 +143,44 @@ export default function CheatSheet({
 
   return (
     <section className="overflow-hidden rounded-md border border-neutral-200 bg-white">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-      >
-        <div>
-          <h2 className="text-base font-semibold text-neutral-900">
-            HOA Documents Cheat Sheet
-          </h2>
-          <p className="mt-0.5 text-xs text-neutral-600">
-            Where to find things across the Articles of Incorporation,
-            CC&amp;Rs, Bylaws, and ARC Guidelines. Unofficial — always
-            confirm against the source PDFs (linked in the table headers)
-            for anything binding.
-          </p>
-        </div>
-        <ChevronDown
-          size={18}
-          className={`shrink-0 text-neutral-400 transition-transform ${
-            open ? "rotate-180" : ""
-          }`}
-        />
-      </button>
+      <div className="px-4 py-3">
+        <h2 className="text-base font-semibold text-neutral-900">
+          HOA Documents Cheat Sheet
+        </h2>
+        <p className="mt-0.5 text-xs text-neutral-600">
+          Where to find things across the Articles of Incorporation,
+          CC&amp;Rs, Bylaws, and ARC Guidelines. Unofficial — always
+          confirm against the source PDFs (linked in the table headers)
+          for anything binding.
+        </p>
+      </div>
 
       <div className="overflow-x-auto border-t border-neutral-200">
         <table className="w-full min-w-[720px] border-collapse text-sm">
           <thead>
-            <tr className="text-left text-xs font-semibold uppercase tracking-wide">
-              <th className="bg-neutral-900 px-3 py-2 text-neutral-100" />
+            <tr className="text-left text-sm font-bold uppercase tracking-wide">
+              <th className="bg-neutral-900 px-3 py-2.5 text-neutral-100">
+                <button
+                  type="button"
+                  onClick={() => setOpen((o) => !o)}
+                  aria-expanded={open}
+                  aria-label={open ? "Collapse table" : "Expand table"}
+                  title={open ? "Collapse table" : "Expand table"}
+                  className="flex items-center justify-center rounded p-1 text-neutral-100 hover:bg-neutral-700"
+                >
+                  <ChevronDown
+                    size={20}
+                    strokeWidth={2.5}
+                    className={`transition-transform ${
+                      open ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+              </th>
               {COLUMNS.map((col) => (
                 <th
                   key={col.key}
-                  className="bg-neutral-900 px-3 py-2 text-neutral-100"
+                  className="bg-neutral-900 px-3 py-2.5 text-neutral-100"
                 >
                   <DocHeaderLink
                     label={col.label}

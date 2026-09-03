@@ -7,6 +7,15 @@ import remarkGfm from "remark-gfm";
 import { HOA_DOCUMENT_NAMES } from "@/lib/documents";
 import type { DocumentTarget } from "./document-panel";
 
+// Short, readable names for inline citations -- distinct from the
+// longer sidebar/document-panel labels in lib/documents.ts.
+const CITATION_LABELS: Record<string, string> = {
+  "CCRs.pdf": "CC&Rs",
+  "Bylaws.pdf": "Bylaws",
+  "ARC Guidelines.pdf": "ARC Guidelines",
+  "Articles of Incorporation.pdf": "Articles of Incorporation",
+};
+
 type Message = { role: "user" | "assistant"; content: string };
 
 function TypingIndicator() {
@@ -20,27 +29,30 @@ function TypingIndicator() {
   );
 }
 
-// Matches the citation format the chat is instructed to use, e.g.
-// "(Bylaws.pdf, Section 3, p. 5)" -- captures the document name and the
-// final page number in the parenthetical. Only recognizes documents we
-// actually have in storage.
+// Matches the machine-readable citation marker the chat is instructed
+// to emit, e.g. "[[cite:ARC Guidelines.pdf:14]]" -- captures the
+// document name and page number. Only recognizes documents we actually
+// have in storage; anything else (a hallucinated name, a malformed
+// marker) is left as-is rather than linkified.
 const DOC_NAME_PATTERN = HOA_DOCUMENT_NAMES.map((n) =>
   n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 ).join("|");
 const CITATION_REGEX = new RegExp(
-  `\\((${DOC_NAME_PATTERN})[^()]*?p\\.\\s*(\\d+)\\)`,
+  `\\[\\[cite:(${DOC_NAME_PATTERN}):(\\d+)\\]\\]`,
   "g"
 );
 
-// Rewrites plain-text citations into markdown links using a fake
+// Rewrites citation markers into markdown links using a fake
 // `citation://` scheme *before* markdown parsing, so ReactMarkdown does
 // the hard work of handling citations that land inside bold/list/etc
 // nesting -- we just intercept the `a` tag afterward and render a
-// button instead of a real link.
+// button instead of a real link. The link text is a short, readable
+// "(Document, p. N)" built from the marker, not the raw marker text.
 function linkifyCitations(markdown: string): string {
-  return markdown.replace(CITATION_REGEX, (full, docName, page) => {
+  return markdown.replace(CITATION_REGEX, (_full, docName, page) => {
     const href = `citation://${encodeURIComponent(docName)}/${page}`;
-    return `[${full}](${href})`;
+    const label = CITATION_LABELS[docName] ?? docName;
+    return `[(${label}, p. ${page})](${href})`;
   });
 }
 
