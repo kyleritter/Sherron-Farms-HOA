@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Unstructured Transform output (parsed HOA document text) -- this repo
+# is public; keep raw document content out of it. Re-fetch via the
+# Unstructured Transform MCP tools or Google Drive if needed again.
+/unstructured_output/

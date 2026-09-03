@@ -51,6 +51,24 @@ export default function ChatClient({ isAdmin }: { isAdmin: boolean }) {
         return;
       }
 
+      // The route returns a plain-text token stream when it has an
+      // answer, but a one-shot JSON object (e.g. "no matching
+      // documents") when it doesn't -- render that message directly
+      // instead of dumping the raw JSON into the chat.
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const body = await res.json().catch(() => null);
+        setMessages((m) => [
+          ...m,
+          {
+            role: "assistant",
+            content:
+              body?.content ?? "Something went wrong. Please try again.",
+          },
+        ]);
+        return;
+      }
+
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let assistantText = "";
