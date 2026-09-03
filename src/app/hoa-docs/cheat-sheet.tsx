@@ -1,3 +1,9 @@
+"use client";
+
+import { useState } from "react";
+import { ChevronDown, FileText } from "lucide-react";
+import { fetchDocumentSignedUrl } from "@/lib/documents";
+
 const CHEAT_SHEET = [
   {
     topic: "Document Purpose",
@@ -63,19 +69,23 @@ const CHEAT_SHEET = [
   },
   {
     topic: "How to Amend",
-    articles: "Primary: Outlines statutory process for amending the corporate articles.",
-    ccrs: "Primary: Requires 67% affirmative vote of total membership (recorded with the county).",
-    bylaws: "Primary: Requires majority vote of a quorum of members at a meeting.",
-    arc: "Primary: Requires a simple majority vote of the Board of Directors.",
+    articles: "Outlines statutory process for amending the corporate articles.",
+    ccrs: "Requires 67% affirmative vote of total membership (recorded with the county).",
+    bylaws: "Requires majority vote of a quorum of members at a meeting.",
+    arc: "Requires a simple majority vote of the Board of Directors.",
   },
 ];
 
-const COLUMN_STYLES = {
-  articles: { header: "bg-violet-50 text-violet-700" },
-  ccrs: { header: "bg-amber-50 text-amber-700" },
-  bylaws: { header: "bg-blue-50 text-blue-700" },
-  arc: { header: "bg-emerald-50 text-emerald-700" },
-} as const;
+const COLUMNS = [
+  {
+    key: "articles",
+    label: "Articles of Incorporation",
+    doc: "Articles of Incorporation.pdf",
+  },
+  { key: "ccrs", label: "CC&Rs (Declaration)", doc: "CCRs.pdf" },
+  { key: "bylaws", label: "Bylaws", doc: "Bylaws.pdf" },
+  { key: "arc", label: "ARC Guidelines", doc: "ARC Guidelines.pdf" },
+] as const;
 
 function Cell({ text }: { text: string }) {
   if (!text) return <span className="text-neutral-300">—</span>;
@@ -102,64 +112,118 @@ function Cell({ text }: { text: string }) {
   );
 }
 
-export default function CheatSheet() {
+async function openSourceDocument(documentName: string) {
+  // Open the tab synchronously (on the click gesture) so the browser
+  // doesn't block it while the signed URL is fetched, then redirect it.
+  const win = window.open("", "_blank");
+  try {
+    const url = await fetchDocumentSignedUrl(documentName);
+    if (win) {
+      win.location.href = url;
+    } else {
+      window.open(url, "_blank");
+    }
+  } catch {
+    win?.close();
+  }
+}
+
+function DocHeaderLink({
+  label,
+  doc,
+}: {
+  label: string;
+  doc: string;
+}) {
   return (
-    <div className="overflow-x-auto rounded-md border border-neutral-200 bg-white">
-      <table className="w-full min-w-[720px] border-collapse text-sm">
-        <thead>
-          <tr className="text-left text-xs font-semibold uppercase tracking-wide">
-            <th className="border-b border-neutral-200 bg-neutral-100 px-3 py-2 text-neutral-600">
-              Topic
-            </th>
-            <th
-              className={`border-b border-neutral-200 px-3 py-2 ${COLUMN_STYLES.articles.header}`}
-            >
-              Articles of Incorporation
-            </th>
-            <th
-              className={`border-b border-neutral-200 px-3 py-2 ${COLUMN_STYLES.ccrs.header}`}
-            >
-              CC&amp;Rs (Declaration)
-            </th>
-            <th
-              className={`border-b border-neutral-200 px-3 py-2 ${COLUMN_STYLES.bylaws.header}`}
-            >
-              Bylaws
-            </th>
-            <th
-              className={`border-b border-neutral-200 px-3 py-2 ${COLUMN_STYLES.arc.header}`}
-            >
-              ARC Guidelines
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {CHEAT_SHEET.map((row, i) => (
-            <tr
-              key={row.topic}
-              className={`border-b border-neutral-100 align-top last:border-0 ${
-                i % 2 === 1 ? "bg-neutral-50/60" : ""
-              }`}
-            >
-              <td className="px-3 py-2.5 font-semibold text-neutral-900">
-                {row.topic}
-              </td>
-              <td className="px-3 py-2.5">
-                <Cell text={row.articles} />
-              </td>
-              <td className="px-3 py-2.5">
-                <Cell text={row.ccrs} />
-              </td>
-              <td className="px-3 py-2.5">
-                <Cell text={row.bylaws} />
-              </td>
-              <td className="px-3 py-2.5">
-                <Cell text={row.arc} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <button
+      type="button"
+      onClick={() => openSourceDocument(doc)}
+      className="inline-flex items-center gap-1 text-left hover:underline"
+      title={`Open ${label} (PDF, opens in a new tab)`}
+    >
+      <span>{label}</span>
+      <FileText size={12} className="shrink-0 opacity-80" />
+    </button>
+  );
+}
+
+export default function CheatSheet() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <section className="overflow-hidden rounded-md border border-neutral-200 bg-white">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <div>
+          <h2 className="text-base font-semibold text-neutral-900">
+            HOA Documents Cheat Sheet
+          </h2>
+          <p className="mt-0.5 text-xs text-neutral-600">
+            Where to find things across the Articles of Incorporation,
+            CC&amp;Rs, Bylaws, and ARC Guidelines. Unofficial — always
+            confirm against the source PDFs (linked in the table headers,
+            or in the sidebar) for anything binding.
+          </p>
+        </div>
+        <ChevronDown
+          size={18}
+          className={`shrink-0 text-neutral-400 transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {open && (
+        <div className="overflow-x-auto border-t border-neutral-200">
+          <table className="w-full min-w-[720px] border-collapse text-sm">
+            <thead>
+              <tr className="text-left text-xs font-semibold uppercase tracking-wide">
+                <th className="bg-neutral-900 px-3 py-2 text-neutral-100">
+                  Topic
+                </th>
+                {COLUMNS.map((col) => (
+                  <th
+                    key={col.key}
+                    className="bg-neutral-900 px-3 py-2 text-neutral-100"
+                  >
+                    <DocHeaderLink label={col.label} doc={col.doc} />
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {CHEAT_SHEET.map((row, i) => (
+                <tr
+                  key={row.topic}
+                  className={`border-b border-neutral-100 align-top last:border-0 ${
+                    i % 2 === 1 ? "bg-neutral-50/60" : ""
+                  }`}
+                >
+                  <td className="px-3 py-2.5 font-semibold text-neutral-900">
+                    {row.topic}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <Cell text={row.articles} />
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <Cell text={row.ccrs} />
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <Cell text={row.bylaws} />
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <Cell text={row.arc} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
