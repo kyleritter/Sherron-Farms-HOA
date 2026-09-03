@@ -34,7 +34,10 @@ export async function POST(request: Request) {
 
   if (settingsError || !settings) {
     return NextResponse.json(
-      { error: "Community settings aren't configured yet. Contact an admin." },
+      {
+        error: "Community settings aren't configured yet. Contact an admin.",
+        debug: settingsError ? { message: settingsError.message, code: settingsError.code, details: settingsError.details, hint: settingsError.hint } : "no settings row",
+      },
       { status: 500 }
     );
   }
