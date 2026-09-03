@@ -34,10 +34,20 @@ documents_raw/          drop source PDFs here before running ingest.py
 1. **Supabase**
    - Create a project.
    - Open the SQL Editor and run `supabase/migrations/0001_init.sql`.
-   - In Authentication → Providers, enable Google and configure the OAuth
-     client (Google Cloud Console → Credentials). Add
-     `https://<your-domain>/auth/callback` (and `http://localhost:3000/auth/callback`
-     for local dev) as an authorized redirect URI.
+   - In Google Cloud Console (APIs & Services → Credentials → OAuth client
+     ID → Web application), set the **Authorized redirect URI** to your
+     Supabase project's own callback:
+     `https://<project-ref>.supabase.co/auth/v1/callback`
+     — that's the only redirect URI Google needs. Google redirects to
+     Supabase, and Supabase forwards the signed-in user into the app from
+     there.
+   - In Supabase Authentication → Providers, enable Google and paste in the
+     Client ID/Secret from that OAuth client.
+   - In Supabase Authentication → URL Configuration, add
+     `http://localhost:3000/auth/callback` (local dev) and
+     `https://<your-vercel-domain>/auth/callback` (production) to
+     **Redirect URLs** — this is where your app's own `/auth/callback`
+     route belongs, not in Google Cloud Console.
 
 2. **Google AI Studio**
    - Grab a Gemini API key.
