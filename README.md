@@ -1,36 +1,84 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sherron Farms HOA Document Assistant
 
-## Getting Started
+A $0-cost, auth-gated RAG chatbot that lets approved residents ask natural-
+language questions about the HOA's governing documents (CC&Rs, Bylaws, ARC
+Guidelines, Amendments, meeting minutes) and get answers with exact
+document/section/page citations.
 
-First, run the development server:
+Stack: Next.js (App Router) on Vercel, Supabase (Postgres + pgvector +
+Auth), Google Gemini (`gemini-2.0-flash` + `text-embedding-004` via AI
+Studio). See `HOA_AI_Assistant_Architecture_Spec.md` (in the project's
+Google Drive folder) for the full design.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Project layout
+
+```
+src/app/
+  login/              Google OAuth sign-in
+  auth/callback/       Supabase OAuth redirect handler
+  pending/             "awaiting admin approval" screen
+  access-denied/       rejected-user screen
+  chat/                the resident-facing chat UI
+  admin/               approve/reject pending residents
+  api/chat/route.ts    embeds question -> vector search -> Gemini, streamed
+src/lib/supabase/      server/browser Supabase clients + middleware helper
+src/middleware.ts       route gating (/chat, /admin)
+supabase/migrations/    SQL schema, RLS policies, vector match RPC
+scripts/ingest.py       local PDF -> chunks -> embeddings -> Supabase
+documents_raw/          drop source PDFs here before running ingest.py
+.github/workflows/      keep-alive ping so Supabase free tier doesn't pause
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## One-time setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Supabase**
+   - Create a project.
+   - Open the SQL Editor and run `supabase/migrations/0001_init.sql`.
+   - In Authentication → Providers, enable Google and configure the OAuth
+     client (Google Cloud Console → Credentials). Add
+     `https://<your-domain>/auth/callback` (and `http://localhost:3000/auth/callback`
+     for local dev) as an authorized redirect URI.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **Google AI Studio**
+   - Grab a Gemini API key.
 
-## Learn More
+3. **Environment variables**
+   - Copy `.env.local.example` to `.env.local` and fill in the Supabase
+     URL/anon key/service role key and the Gemini API key.
+   - Add the same variables in Vercel → Project Settings → Environment
+     Variables for the deployed app (service role key stays server-only —
+     do not prefix it with `NEXT_PUBLIC_`).
 
-To learn more about Next.js, take a look at the following resources:
+4. **Bootstrap the first admin**
+   - Sign in once through the deployed (or local) app with your own
+     Google account — this creates your `profiles` row with
+     `status = 'pending'`.
+   - In the Supabase Table Editor, manually set your row to
+     `role = 'admin', status = 'approved'`. There's no other way to reach
+     `/admin` the first time.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+5. **Ingest the governing documents**
+   - `pip install -r scripts/requirements.txt`
+   - Drop the HOA's PDFs into `documents_raw/`.
+   - `python scripts/ingest.py`
+   - Re-run whenever a document is added, replaced, or amended.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+6. **Keep-alive workflow**
+   - Add `SUPABASE_URL` and `SUPABASE_ANON_KEY` as GitHub Actions repo
+     secrets so `.github/workflows/keep-alive.yml` can ping the project
+     every 4 days (Supabase free tier pauses after 7 days idle).
 
-## Deploy on Vercel
+## Local development
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm install
+npm run dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Open http://localhost:3000.
+
+## Deploying
+
+Push to `main` with the Vercel GitHub integration connected, or
+`vercel --prod`. Set the environment variables in the Vercel dashboard
+first (step 3 above).
