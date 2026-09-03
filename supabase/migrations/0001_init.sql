@@ -1,8 +1,10 @@
 -- Sherron Farms HOA Document Assistant — initial schema
 -- Run this in the Supabase SQL Editor for your project.
 
--- 1. Enable pgvector extension
-CREATE EXTENSION IF NOT EXISTS vector;
+-- 1. Enable pgvector extension (kept out of the public schema per Supabase's
+-- linter guidance)
+CREATE SCHEMA IF NOT EXISTS extensions;
+CREATE EXTENSION IF NOT EXISTS vector SCHEMA extensions;
 
 -- 2. User Profiles Table (extends auth.users)
 CREATE TABLE public.profiles (
@@ -29,11 +31,16 @@ BEGIN
   );
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- This function only makes sense as an AFTER INSERT trigger on auth.users
+-- (it references NEW). It doesn't need to be callable directly over the
+-- REST RPC surface, so lock that down.
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
 
 -- 3. Document Chunks & Embeddings Table
 CREATE TABLE public.hoa_document_chunks (
@@ -69,7 +76,14 @@ RETURNS TABLE (
   similarity FLOAT
 )
 LANGUAGE plpgsql
-SECURITY DEFINER
+-- SECURITY INVOKER (the default, stated explicitly here) is deliberate:
+-- this function runs as the calling user, so the "Approved users can read
+-- document chunks" RLS policy below actually applies to it. A SECURITY
+-- DEFINER version would run as the function owner and silently bypass RLS,
+-- letting ANY caller — approved or not, even unauthenticated — pull
+-- document chunks straight through this RPC.
+SECURITY INVOKER
+SET search_path = public
 AS $$
 BEGIN
   RETURN QUERY
