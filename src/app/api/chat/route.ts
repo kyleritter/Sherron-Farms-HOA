@@ -35,8 +35,22 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { messages } = await req.json();
+  type ChatMessage = { role: "user" | "assistant"; content: string };
+  const { messages } = (await req.json()) as { messages: ChatMessage[] };
   const latestMessage = messages[messages.length - 1].content;
+
+  // Short follow-ups ("is there a max?", "what about pets?") mean
+  // nothing on their own to a similarity search -- fold in a bit of
+  // recent conversation so retrieval targets the actual topic being
+  // discussed, not just the literal follow-up text.
+  const CONTEXT_TURNS = 4;
+  const recentContext = messages
+    .slice(-1 - CONTEXT_TURNS, -1)
+    .map((m) => `${m.role === "user" ? "Resident" : "Assistant"}: ${m.content}`)
+    .join("\n");
+  const retrievalQuery = recentContext
+    ? `${recentContext}\nResident: ${latestMessage}`
+    : latestMessage;
 
   // 2. Embed user question
   // text-embedding-004 was retired; gemini-embedding-001 is current.
@@ -45,7 +59,7 @@ export async function POST(req: NextRequest) {
   // sync with src/lib/gemini.ts's EMBEDDING_MODEL/EMBEDDING_DIMENSIONS.
   const embedResponse = await ai.models.embedContent({
     model: "gemini-embedding-001",
-    contents: latestMessage,
+    contents: retrievalQuery,
     config: { outputDimensionality: 768 },
   });
   const queryEmbedding = embedResponse.embeddings![0].values;
@@ -84,23 +98,28 @@ export async function POST(req: NextRequest) {
   const systemInstruction = `
 You are the official Sherron Farms HOA Document Assistant. Your role is to provide accurate, strictly factual information based ONLY on the provided excerpts from our governing documents (CC&Rs, Bylaws, Guidelines, and Amendments).
 
-CURRENT STATUS OF THE ASSOCIATION -- apply this to every answer:
-- The community is no longer under Declarant control. The "Period of Declarant Control" described in these documents has ENDED. There is no current Declarant and no current "Declarant Members" -- those terms describe the developer's temporary rights during the community's initial build-out, which are now historical, not present-day facts.
-- Any individuals named in the Articles of Incorporation as the initial/organizational Board of Directors were only that -- the board in place at incorporation. They are NOT today's Board. Never present them as the current directors.
-- When a resident asks about the CURRENT board, current officer count, or who is currently on the board, answer only from the general/ongoing rules for how the Board is composed and elected after the Declarant Control Period (per the Bylaws), and explicitly say these documents do not list who currently holds those seats -- direct the resident to the Board or a current roster for that. Do not answer with the Articles of Incorporation's initial-director list unless the resident is specifically asking about the community's founding/incorporation history.
-- If a provision is explicitly scoped "during the Period of Declarant Control" or similar, treat it as inapplicable today and say so, rather than presenting it as a current rule.
+BACKGROUND TO APPLY SILENTLY -- use this to judge which facts are current, but do not mention this section, its terminology, or its reasoning in your answer. Never use the words "Declarant" or "Declarant Control" in a response unless the resident's question itself uses that word first.
+- This community is past its Period of Declarant Control. There is no current Declarant and no current Declarant Members.
+- Any individuals named in the Articles of Incorporation as the initial/organizational Board of Directors are NOT today's Board. Never present them as current directors, and never explain that they aren't (just don't mention them) unless the resident is specifically asking about the community's founding/incorporation history.
+- When asked about the CURRENT board size, composition, or members, answer only from the rules that govern the Board today (per the Bylaws). If the documents don't state a specific current count or roster, say so plainly and suggest contacting the Board -- without explaining why (no mention of Declarant Control, transitions, or incorporation history).
+- Do not apply a provision that is explicitly scoped to apply only "during the Period of Declarant Control" when answering about current rules -- but don't tell the resident that's why it was excluded; just answer with what currently applies.
 
 RULES:
 1. Every statement must cite its exact source document, section, and page number using format: (Document Name, Section X, p. Y).
 2. If earlier covenants conflict with later amendments, highlight that the AMENDMENT supersedes the earlier rule.
 3. If the excerpts do not explicitly answer the question, state: "The provided HOA documents do not contain explicit rules regarding this topic. Please contact the Architectural Review Committee or HOA Board."
 4. Never speculate, guess, or invent legal interpretations.
-5. Always include this brief closing notice at the end:
-   "*Note: This response is for informational convenience. Refer to the signed documents or contact the board for formal interpretations.*"
+5. Do not add a closing disclaimer or note to your answer -- the app already shows one below the chat.
 `;
 
-  // 5. Call Gemini with streaming.
-  const prompt = `Context Excerpts:\n${contextText}\n\nResident Question: ${latestMessage}`;
+  // 5. Call Gemini with streaming, passing prior turns as real
+  // conversation history (not just the latest message) so follow-ups
+  // like "is there a max?" resolve against what was just discussed.
+  const priorTurns = messages.slice(0, -1).map((m) => ({
+    role: m.role === "assistant" ? ("model" as const) : ("user" as const),
+    parts: [{ text: m.content }],
+  }));
+  const finalPrompt = `Context Excerpts:\n${contextText}\n\nResident Question: ${latestMessage}`;
 
   const responseStream = await ai.models.generateContentStream({
     model: GEMINI_MODEL,
@@ -110,7 +129,7 @@ RULES:
     config: {
       systemInstruction,
     },
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    contents: [...priorTurns, { role: "user", parts: [{ text: finalPrompt }] }],
   });
 
   // 6. Stream tokens back to the browser

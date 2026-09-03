@@ -178,8 +178,8 @@ export default function ChatClient({ isAdmin }: { isAdmin: boolean }) {
           </button>
         </div>
         <p className="mx-auto mt-2 max-w-2xl text-center text-xs text-neutral-400">
-          Informational only — not a substitute for the signed governing
-          documents or a formal ruling from the Board.
+          This response is for informational convenience. Refer to the
+          signed documents or contact the board for formal interpretations.
         </p>
       </form>
     </div>
