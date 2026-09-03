@@ -33,11 +33,8 @@ export async function POST(request: Request) {
     .single();
 
   if (settingsError || !settings) {
-    console.error("VERIFY_DEBUG settings fetch failed:", JSON.stringify(settingsError));
     return NextResponse.json(
-      {
-        error: "Community settings aren't configured yet. Contact an admin.",
-      },
+      { error: "Community settings aren't configured yet. Contact an admin." },
       { status: 500 }
     );
   }
