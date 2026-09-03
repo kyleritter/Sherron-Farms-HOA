@@ -6,6 +6,7 @@ import { LogOut, ShieldCheck } from "lucide-react";
 
 const LINKS = [
   { href: "/hoa-docs", label: "HOA Docs" },
+  { href: "/documents", label: "Documents" },
   { href: "/financials", label: "Financials" },
   { href: "/ideas", label: "Ideas" },
 ];

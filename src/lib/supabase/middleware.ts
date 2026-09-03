@@ -42,6 +42,7 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/chat") ||
     path.startsWith("/admin") ||
     path.startsWith("/hoa-docs") ||
+    path.startsWith("/documents") ||
     path.startsWith("/financials") ||
     path.startsWith("/ideas");
 

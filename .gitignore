@@ -44,3 +44,8 @@ next-env.d.ts
 # is public; keep raw document content out of it. Re-fetch via the
 # Unstructured Transform MCP tools or Google Drive if needed again.
 /unstructured_output/
+
+# Raw source PDFs used to seed Supabase Storage -- large binaries, not
+# needed in a public repo. Re-upload via scripts/upload_source_pdfs.py
+# from a local copy if this bucket ever needs re-seeding.
+/scripts/source_pdfs/
