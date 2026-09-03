@@ -38,7 +38,12 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isProtected = path.startsWith("/chat") || path.startsWith("/admin");
+  const isProtected =
+    path.startsWith("/chat") ||
+    path.startsWith("/admin") ||
+    path.startsWith("/hoa-docs") ||
+    path.startsWith("/financials") ||
+    path.startsWith("/ideas");
 
   if (!isProtected) {
     return supabaseResponse;

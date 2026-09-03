@@ -2,10 +2,11 @@
 
 import { useState, useRef, useEffect, FormEvent } from "react";
 import { Send } from "lucide-react";
+import AppNav from "@/components/app-nav";
 
 type Message = { role: "user" | "assistant"; content: string };
 
-export default function ChatClient() {
+export default function ChatClient({ isAdmin }: { isAdmin: boolean }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -71,11 +72,7 @@ export default function ChatClient() {
 
   return (
     <div className="flex h-screen flex-col bg-neutral-50">
-      <header className="border-b border-neutral-200 bg-white px-4 py-3">
-        <h1 className="text-base font-semibold text-neutral-900">
-          Sherron Farms HOA Document Assistant
-        </h1>
-      </header>
+      <AppNav isAdmin={isAdmin} />
 
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="mx-auto flex max-w-2xl flex-col gap-4">

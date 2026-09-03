@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { approveUser, rejectUser, changeCommunityPassword } from "./actions";
+import AppNav from "@/components/app-nav";
 
 export default async function AdminPage() {
   const supabase = await createClient();
@@ -25,7 +26,9 @@ export default async function AdminPage() {
   const others = (profiles ?? []).filter((p) => p.status !== "pending");
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
+    <div className="min-h-screen bg-neutral-50">
+      <AppNav isAdmin={true} />
+      <div className="mx-auto max-w-3xl px-4 py-10">
       <h1 className="text-xl font-semibold text-neutral-900">
         Resident Access — Admin
       </h1>
@@ -121,6 +124,7 @@ export default async function AdminPage() {
           ))}
         </div>
       </section>
+      </div>
     </div>
   );
 }

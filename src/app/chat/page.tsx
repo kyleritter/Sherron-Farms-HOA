@@ -12,5 +12,12 @@ export default async function ChatPage() {
     redirect("/login");
   }
 
-  return <ChatClient />;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role, status")
+    .eq("id", user.id)
+    .single();
+  if (!profile || profile.status === "pending") redirect("/verify");
+
+  return <ChatClient isAdmin={profile.role === "admin"} />;
 }
