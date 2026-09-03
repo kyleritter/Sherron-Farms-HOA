@@ -21,9 +21,9 @@ export default function LoginPage() {
           Sherron Farms HOA Document Assistant
         </h1>
         <p className="mt-2 max-w-md text-sm text-neutral-600">
-          Sign in with the Google account associated with your resident
-          email to ask questions about the CC&amp;Rs, Bylaws, ARC
-          Guidelines, and meeting minutes.
+          Sign in with Google, then confirm your street address and the
+          community password to ask questions about the CC&amp;Rs, Bylaws,
+          ARC Guidelines, and meeting minutes.
         </p>
       </div>
       <button
@@ -33,8 +33,8 @@ export default function LoginPage() {
         Sign in with Google
       </button>
       <p className="max-w-sm text-xs text-neutral-500">
-        New accounts require one-time approval from an HOA administrator
-        before they can access the assistant.
+        New accounts get instant access after verifying their address and
+        the community password — no waiting on an admin.
       </p>
     </div>
   );

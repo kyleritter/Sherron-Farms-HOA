@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { approveUser, rejectUser } from "./actions";
+import { approveUser, rejectUser, changeCommunityPassword } from "./actions";
 
 export default async function AdminPage() {
   const supabase = await createClient();
@@ -18,7 +18,7 @@ export default async function AdminPage() {
 
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, email, full_name, role, status, created_at")
+    .select("id, email, full_name, role, status, street_address, created_at")
     .order("created_at", { ascending: false });
 
   const pending = (profiles ?? []).filter((p) => p.status === "pending");
@@ -30,10 +30,37 @@ export default async function AdminPage() {
         Resident Access — Admin
       </h1>
 
+      <section className="mt-8 rounded-md border border-neutral-200 bg-white p-4">
+        <h2 className="text-sm font-medium text-neutral-500">
+          Community password
+        </h2>
+        <p className="mt-1 text-xs text-neutral-500">
+          Residents use this alongside their street address to verify
+          themselves after signing in with Google.
+        </p>
+        <form action={changeCommunityPassword} className="mt-3 flex gap-2">
+          <input
+            type="text"
+            name="newPassword"
+            placeholder="New community password"
+            className="flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900"
+            required
+          />
+          <button className="rounded-md bg-neutral-900 px-3 py-2 text-xs font-medium text-white hover:bg-neutral-700">
+            Update
+          </button>
+        </form>
+      </section>
+
       <section className="mt-8">
         <h2 className="text-sm font-medium text-neutral-500">
-          Pending approval ({pending.length})
+          Signed in but not yet verified ({pending.length})
         </h2>
+        <p className="mt-1 text-xs text-neutral-500">
+          Normally residents verify themselves with their address and the
+          community password right after signing in. Use these buttons only
+          to manually override that (e.g. someone forgot the password).
+        </p>
         <div className="mt-3 divide-y divide-neutral-200 rounded-md border border-neutral-200 bg-white">
           {pending.length === 0 && (
             <p className="px-4 py-3 text-sm text-neutral-500">
@@ -70,7 +97,7 @@ export default async function AdminPage() {
 
       <section className="mt-10">
         <h2 className="text-sm font-medium text-neutral-500">
-          All other residents ({others.length})
+          Verified residents ({others.length})
         </h2>
         <div className="mt-3 divide-y divide-neutral-200 rounded-md border border-neutral-200 bg-white">
           {others.map((p) => (
@@ -82,7 +109,10 @@ export default async function AdminPage() {
                 <p className="text-sm font-medium text-neutral-900">
                   {p.full_name || p.email}
                 </p>
-                <p className="text-xs text-neutral-500">{p.email}</p>
+                <p className="text-xs text-neutral-500">
+                  {p.email}
+                  {p.street_address ? ` · ${p.street_address}` : ""}
+                </p>
               </div>
               <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">
                 {p.status} · {p.role}

@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import bcrypt from "bcryptjs";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 async function assertIsAdmin() {
   const supabase = await createClient();
@@ -21,19 +22,33 @@ async function assertIsAdmin() {
 }
 
 export async function approveUser(userId: string) {
-  const supabase = await assertIsAdmin();
-  await supabase
-    .from("profiles")
-    .update({ status: "approved" })
-    .eq("id", userId);
+  await assertIsAdmin();
+  const admin = createAdminClient();
+  await admin.from("profiles").update({ status: "approved" }).eq("id", userId);
   revalidatePath("/admin");
 }
 
 export async function rejectUser(userId: string) {
-  const supabase = await assertIsAdmin();
-  await supabase
-    .from("profiles")
-    .update({ status: "rejected" })
-    .eq("id", userId);
+  await assertIsAdmin();
+  const admin = createAdminClient();
+  await admin.from("profiles").update({ status: "rejected" }).eq("id", userId);
+  revalidatePath("/admin");
+}
+
+export async function changeCommunityPassword(formData: FormData) {
+  await assertIsAdmin();
+  const newPassword = String(formData.get("newPassword") ?? "");
+  if (!newPassword || newPassword.length < 4) {
+    throw new Error("Password must be at least 4 characters.");
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("community_settings")
+    .update({ password_hash: passwordHash, updated_at: new Date().toISOString() })
+    .eq("id", true);
+
+  if (error) throw new Error("Couldn't update the community password.");
   revalidatePath("/admin");
 }

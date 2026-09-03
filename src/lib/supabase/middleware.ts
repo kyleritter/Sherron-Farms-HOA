@@ -58,7 +58,7 @@ export async function updateSession(request: NextRequest) {
 
   if (!profile || profile.status === "pending") {
     const url = request.nextUrl.clone();
-    url.pathname = "/pending";
+    url.pathname = "/verify";
     return NextResponse.redirect(url);
   }
 
