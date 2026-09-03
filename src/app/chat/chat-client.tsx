@@ -2,19 +2,36 @@
 
 import { useState, useRef, useEffect, FormEvent } from "react";
 import { Send } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import AppNav from "@/components/app-nav";
 
 type Message = { role: "user" | "assistant"; content: string };
+
+function TypingIndicator() {
+  return (
+    <div className="mr-auto flex max-w-[85%] items-center gap-1 rounded-lg bg-white px-4 py-3 text-sm text-neutral-400 shadow-sm ring-1 ring-neutral-200">
+      <span className="sr-only">Thinking…</span>
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-neutral-300 [animation-delay:-0.3s]" />
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-neutral-300 [animation-delay:-0.15s]" />
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-neutral-300" />
+    </div>
+  );
+}
 
 export default function ChatClient({ isAdmin }: { isAdmin: boolean }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  // True from submit until the first token (or a one-shot reply) has
+  // actually landed in `messages` -- drives the typing indicator, kept
+  // separate from `loading` (which also disables the input/button).
+  const [awaitingReply, setAwaitingReply] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, awaitingReply]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -28,6 +45,7 @@ export default function ChatClient({ isAdmin }: { isAdmin: boolean }) {
     setMessages(nextMessages);
     setInput("");
     setLoading(true);
+    setAwaitingReply(true);
 
     try {
       const res = await fetch("/api/chat", {
@@ -38,6 +56,7 @@ export default function ChatClient({ isAdmin }: { isAdmin: boolean }) {
 
       if (!res.ok || !res.body) {
         const errBody = await res.json().catch(() => null);
+        setAwaitingReply(false);
         setMessages((m) => [
           ...m,
           {
@@ -58,6 +77,7 @@ export default function ChatClient({ isAdmin }: { isAdmin: boolean }) {
       const contentType = res.headers.get("content-type") || "";
       if (contentType.includes("application/json")) {
         const body = await res.json().catch(() => null);
+        setAwaitingReply(false);
         setMessages((m) => [
           ...m,
           {
@@ -72,19 +92,31 @@ export default function ChatClient({ isAdmin }: { isAdmin: boolean }) {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let assistantText = "";
-      setMessages((m) => [...m, { role: "assistant", content: "" }]);
+      let started = false;
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         assistantText += decoder.decode(value, { stream: true });
-        setMessages((m) => [
-          ...m.slice(0, -1),
-          { role: "assistant", content: assistantText },
-        ]);
+        if (!started) {
+          // Swap the typing indicator out for the real bubble the
+          // moment the first token arrives.
+          started = true;
+          setAwaitingReply(false);
+          setMessages((m) => [
+            ...m,
+            { role: "assistant", content: assistantText },
+          ]);
+        } else {
+          setMessages((m) => [
+            ...m.slice(0, -1),
+            { role: "assistant", content: assistantText },
+          ]);
+        }
       }
     } finally {
       setLoading(false);
+      setAwaitingReply(false);
     }
   }
 
@@ -101,18 +133,26 @@ export default function ChatClient({ isAdmin }: { isAdmin: boolean }) {
               limit applies?&rdquo;
             </p>
           )}
-          {messages.map((m, i) => (
-            <div
-              key={i}
-              className={`max-w-[85%] whitespace-pre-wrap rounded-lg px-4 py-2.5 text-sm ${
-                m.role === "user"
-                  ? "ml-auto bg-neutral-900 text-white"
-                  : "mr-auto bg-white text-neutral-900 shadow-sm ring-1 ring-neutral-200"
-              }`}
-            >
-              {m.content || "…"}
-            </div>
-          ))}
+          {messages.map((m, i) =>
+            m.role === "user" ? (
+              <div
+                key={i}
+                className="ml-auto max-w-[85%] whitespace-pre-wrap rounded-lg bg-neutral-900 px-4 py-2.5 text-sm text-white"
+              >
+                {m.content}
+              </div>
+            ) : (
+              <div
+                key={i}
+                className="mr-auto max-w-[85%] rounded-lg bg-white px-4 py-2.5 text-sm text-neutral-900 shadow-sm ring-1 ring-neutral-200 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5"
+              >
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {m.content || "…"}
+                </ReactMarkdown>
+              </div>
+            )
+          )}
+          {awaitingReply && <TypingIndicator />}
           <div ref={bottomRef} />
         </div>
       </div>
