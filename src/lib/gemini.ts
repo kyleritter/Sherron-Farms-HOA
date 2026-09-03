@@ -4,7 +4,9 @@ export const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 // Verify this against whatever's current in Google AI Studio before
 // deploying -- Gemini model IDs get renamed/retired periodically.
-export const GEMINI_MODEL = "gemini-2.0-flash";
+// gemini-2.0-flash was retired -- gemini-3.6-flash is Google's
+// recommended current replacement (per the retirement error message).
+export const GEMINI_MODEL = "gemini-3.6-flash";
 
 // text-embedding-004 was retired; gemini-embedding-001 is the current
 // stable embedding model. It defaults to 3072 dimensions, so

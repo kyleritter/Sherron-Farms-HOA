@@ -6,8 +6,9 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 // Verify this against whatever's current in Google AI Studio before
 // deploying — Gemini model IDs get renamed/retired periodically, and
-// free-tier rate limits (RPM/RPD) vary by model.
-const GEMINI_MODEL = "gemini-2.0-flash";
+// free-tier rate limits (RPM/RPD) vary by model. gemini-2.0-flash was
+// retired; gemini-3.6-flash is Google's current recommended replacement.
+const GEMINI_MODEL = "gemini-3.6-flash";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
