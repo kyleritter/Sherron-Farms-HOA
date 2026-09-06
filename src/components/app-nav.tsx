@@ -18,7 +18,7 @@ export default function AppNav({ isAdmin }: { isAdmin: boolean }) {
     const { createClient } = await import("@/lib/supabase/client");
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/login");
+    router.push("/verify");
     router.refresh();
   }
 

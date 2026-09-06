@@ -8,7 +8,9 @@ import { NextResponse, type NextRequest } from "next/server";
  * Route rules:
  *  - "/chat/*"  requires status === "approved"
  *  - "/admin/*" requires role === "admin" AND status === "approved"
- *  - unauthenticated users hitting a protected route are sent to /login
+ *  - unauthenticated users hitting a protected route are sent straight to
+ *    /verify (Google OAuth sign-in is disabled for now -- see /login,
+ *    whose code is kept in place in case we reconnect it later)
  *  - authenticated-but-not-approved users are sent to /pending or /access-denied
  */
 export async function updateSession(request: NextRequest) {
@@ -51,7 +53,7 @@ export async function updateSession(request: NextRequest) {
 
   if (!user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = "/verify";
     return NextResponse.redirect(url);
   }
 

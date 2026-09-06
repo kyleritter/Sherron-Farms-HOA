@@ -81,6 +81,21 @@ FILES = [
         "document_name": "CCRs.pdf",
         "document_type": "CC&Rs",
     },
+    {
+        "path": OUTPUT_DIR / "minutes_2026_03_12.json",
+        "document_name": "Minutes - March 12, 2026.pdf",
+        "document_type": "Minutes",
+    },
+    {
+        "path": OUTPUT_DIR / "minutes_2026_05_14.json",
+        "document_name": "Minutes - May 14, 2026.pdf",
+        "document_type": "Minutes",
+    },
+    {
+        "path": OUTPUT_DIR / "minutes_2026_06_11.json",
+        "document_name": "Minutes - June 11, 2026.pdf",
+        "document_type": "Minutes",
+    },
 ]
 
 CHUNK_TYPES = {"CompositeElement", "TableChunk", "Table"}

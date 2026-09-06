@@ -8,7 +8,7 @@ export default async function AdminPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/verify");
 
   const { data: me } = await supabase
     .from("profiles")
@@ -77,9 +77,11 @@ export default async function AdminPage() {
             >
               <div>
                 <p className="text-sm font-medium text-neutral-900">
-                  {p.full_name || p.email}
+                  {p.full_name || p.email || "Resident"}
                 </p>
-                <p className="text-xs text-neutral-500">{p.email}</p>
+                {p.email && (
+                  <p className="text-xs text-neutral-500">{p.email}</p>
+                )}
               </div>
               <div className="flex gap-2">
                 <form action={approveUser.bind(null, p.id)}>
@@ -110,11 +112,12 @@ export default async function AdminPage() {
             >
               <div>
                 <p className="text-sm font-medium text-neutral-900">
-                  {p.full_name || p.email}
+                  {p.full_name || p.street_address || p.email || "Resident"}
                 </p>
                 <p className="text-xs text-neutral-500">
                   {p.email}
-                  {p.street_address ? ` · ${p.street_address}` : ""}
+                  {p.email && p.street_address ? " · " : ""}
+                  {p.street_address ?? ""}
                 </p>
               </div>
               <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">

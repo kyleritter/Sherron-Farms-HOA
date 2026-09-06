@@ -31,11 +31,11 @@ export default async function IdeasPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/verify");
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, status, full_name, email")
+    .select("role, status, full_name, email, street_address")
     .eq("id", user.id)
     .single();
   if (!profile || profile.status === "pending") redirect("/verify");
@@ -98,7 +98,7 @@ export default async function IdeasPage() {
         </p>
 
         <div className="mt-6">
-          <IdeaSubmitForm defaultName={profile.full_name || profile.email || ""} />
+          <IdeaSubmitForm defaultName={profile.full_name || profile.street_address || profile.email || ""} />
         </div>
 
         <div className="mt-8 flex flex-col gap-3">

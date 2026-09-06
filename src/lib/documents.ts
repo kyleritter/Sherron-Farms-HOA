@@ -41,6 +41,23 @@ export type FinancialDocumentName =
 export const FINANCIAL_DOCUMENT_NAMES: readonly string[] =
   FINANCIAL_DOCUMENTS.map((d) => d.name);
 
+// Meeting minutes, shown as "Recent Meeting Minutes" on /hoa-docs and
+// queryable by the AI chat (ingested into hoa_document_chunks via
+// scripts/ingest_from_unstructured.py, document_type "Minutes"). `date`
+// drives the most-recent-first sort; uploaded via
+// scripts/upload_minutes_pdfs.py.
+export const MINUTES_DOCUMENTS = [
+  { name: "Minutes - June 11, 2026.pdf", label: "June 11, 2026", date: "2026-06-11" },
+  { name: "Minutes - May 14, 2026.pdf", label: "May 14, 2026", date: "2026-05-14" },
+  { name: "Minutes - March 12, 2026.pdf", label: "March 12, 2026", date: "2026-03-12" },
+] as const;
+
+export type MinutesDocumentName = (typeof MINUTES_DOCUMENTS)[number]["name"];
+
+export const MINUTES_DOCUMENT_NAMES: readonly string[] = MINUTES_DOCUMENTS.map(
+  (d) => d.name
+);
+
 export async function fetchDocumentSignedUrl(
   documentName: string
 ): Promise<string> {

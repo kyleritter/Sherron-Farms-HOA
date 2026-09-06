@@ -4,7 +4,11 @@ import { useState, useRef, useEffect, FormEvent } from "react";
 import { Send } from "lucide-react";
 import ReactMarkdown, { type Components, defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { HOA_DOCUMENT_NAMES, openDocumentInNewTab } from "@/lib/documents";
+import {
+  HOA_DOCUMENT_NAMES,
+  MINUTES_DOCUMENT_NAMES,
+  openDocumentInNewTab,
+} from "@/lib/documents";
 
 // Short, readable names for inline citations -- distinct from the
 // longer labels used elsewhere in lib/documents.ts.
@@ -13,6 +17,9 @@ const CITATION_LABELS: Record<string, string> = {
   "Bylaws.pdf": "Bylaws",
   "ARC Guidelines.pdf": "ARC Guidelines",
   "Articles of Incorporation.pdf": "Articles of Incorporation",
+  "Minutes - June 11, 2026.pdf": "Minutes, June 11, 2026",
+  "Minutes - May 14, 2026.pdf": "Minutes, May 14, 2026",
+  "Minutes - March 12, 2026.pdf": "Minutes, March 12, 2026",
 };
 
 type Message = { role: "user" | "assistant"; content: string };
@@ -33,7 +40,8 @@ function TypingIndicator() {
 // document name and page number. Only recognizes documents we actually
 // have in storage; anything else (a hallucinated name, a malformed
 // marker) is left as-is rather than linkified.
-const DOC_NAME_PATTERN = HOA_DOCUMENT_NAMES.map((n) =>
+const CITABLE_DOCUMENT_NAMES = [...HOA_DOCUMENT_NAMES, ...MINUTES_DOCUMENT_NAMES];
+const DOC_NAME_PATTERN = CITABLE_DOCUMENT_NAMES.map((n) =>
   n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 ).join("|");
 const CITATION_REGEX = new RegExp(

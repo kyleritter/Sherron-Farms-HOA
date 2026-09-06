@@ -31,23 +31,36 @@ function money(n: number) {
   return `${sign}$${Math.abs(rounded).toLocaleString()}`;
 }
 
-function VarianceCell({ value }: { value: number }) {
+function varianceColor(value: number, emphasize?: boolean) {
   const rounded = Math.round(value);
-  const color =
-    rounded > 0
-      ? "text-emerald-700"
+  if (emphasize) {
+    return rounded > 0
+      ? "text-emerald-300"
       : rounded < 0
-        ? "text-red-700"
-        : "text-neutral-500";
-  return <td className={`px-2.5 py-1.5 text-right tabular-nums ${color}`}>{money(value)}</td>;
+        ? "text-red-300"
+        : "text-neutral-300";
+  }
+  return rounded > 0
+    ? "text-emerald-700"
+    : rounded < 0
+      ? "text-red-700"
+      : "text-neutral-500";
 }
 
-function FiguresCells({ figures }: { figures: Figures }) {
+function YtdCells({ ytd, emphasize }: { ytd: Figures; emphasize?: boolean }) {
   return (
     <>
-      <td className="px-2.5 py-1.5 text-right tabular-nums">{money(figures.actual)}</td>
-      <td className="px-2.5 py-1.5 text-right tabular-nums text-neutral-500">{money(figures.budget)}</td>
-      <VarianceCell value={figures.variance} />
+      <td className="px-2.5 py-1.5 text-right tabular-nums">{money(ytd.actual)}</td>
+      <td
+        className={`px-2.5 py-1.5 text-right tabular-nums ${
+          emphasize ? "text-neutral-300" : "text-neutral-500"
+        }`}
+      >
+        {money(ytd.budget)}
+      </td>
+      <td className={`px-2.5 py-1.5 text-right tabular-nums ${varianceColor(ytd.variance, emphasize)}`}>
+        {money(ytd.variance)}
+      </td>
     </>
   );
 }
@@ -62,9 +75,11 @@ function LineRow({ line }: { line: Line }) {
         {money(line.annualBudget)}
       </td>
       {line.months.map((m, i) => (
-        <FiguresCells key={i} figures={m} />
+        <td key={i} className="px-2.5 py-1.5 text-right tabular-nums">
+          {money(m.actual)}
+        </td>
       ))}
-      <FiguresCells figures={line.ytd} />
+      <YtdCells ytd={line.ytd} />
     </tr>
   );
 }
@@ -108,50 +123,29 @@ function TotalRow({
         {total.annualBudget !== undefined ? money(total.annualBudget) : ""}
       </td>
       {total.months.map((m, i) => (
-        <FiguresRowCells key={i} figures={m} emphasize={emphasize} />
+        <td key={i} className="px-2.5 py-2 text-right tabular-nums">
+          {money(m.actual)}
+        </td>
       ))}
-      <FiguresRowCells figures={total.ytd} emphasize={emphasize} />
+      <YtdCells ytd={total.ytd} emphasize={emphasize} />
     </tr>
   );
 }
 
-function FiguresRowCells({ figures, emphasize }: { figures: Figures; emphasize?: boolean }) {
-  const varColor = emphasize
-    ? figures.variance > 0
-      ? "text-emerald-300"
-      : figures.variance < 0
-        ? "text-red-300"
-        : "text-neutral-300"
-    : figures.variance > 0
-      ? "text-emerald-700"
-      : figures.variance < 0
-        ? "text-red-700"
-        : "text-neutral-500";
-  return (
-    <>
-      <td className="px-2.5 py-2 text-right tabular-nums">{money(figures.actual)}</td>
-      <td className={`px-2.5 py-2 text-right tabular-nums ${emphasize ? "text-neutral-300" : "text-neutral-500"}`}>
-        {money(figures.budget)}
-      </td>
-      <td className={`px-2.5 py-2 text-right tabular-nums ${varColor}`}>{money(figures.variance)}</td>
-    </>
-  );
-}
-
 export default function PnlTable() {
-  const colSpan = 2 + data.months.length * 3 + 3;
+  const colSpan = 2 + data.months.length + 3;
 
   return (
     <section className="overflow-hidden rounded-md border border-neutral-200 bg-white">
       <div className="px-4 py-3">
         <h2 className="text-base font-semibold text-neutral-900">{data.title}</h2>
         <p className="mt-0.5 text-xs text-neutral-600">
-          {data.period} &middot; Actual vs. Budget vs. Variance, by month and
-          year-to-date.
+          {data.period} &middot; Annual budget, monthly actuals, and
+          year-to-date actual vs. budget vs. variance.
         </p>
       </div>
       <div className="max-h-[70vh] overflow-auto border-t border-neutral-200">
-        <table className="w-full min-w-[1400px] border-collapse text-sm">
+        <table className="w-full min-w-[1000px] border-collapse text-sm">
           <thead className="sticky top-0 z-20">
             <tr className="text-left text-xs font-bold uppercase tracking-wide text-neutral-100">
               <th className="sticky left-0 z-30 bg-neutral-900 px-3 py-2.5">
@@ -161,7 +155,7 @@ export default function PnlTable() {
                 Annual Budget
               </th>
               {data.months.map((m) => (
-                <th key={m} className="bg-neutral-900 px-2.5 py-2.5 text-right" colSpan={3}>
+                <th key={m} className="bg-neutral-900 px-2.5 py-2.5 text-right">
                   {m}
                 </th>
               ))}
@@ -173,11 +167,9 @@ export default function PnlTable() {
               <th className="sticky left-0 z-30 bg-neutral-800 px-3 py-1"></th>
               <th className="bg-neutral-800 px-2.5 py-1"></th>
               {data.months.map((m) => (
-                <Fragment key={m}>
-                  <th className="bg-neutral-800 px-2.5 py-1 text-right">Actual</th>
-                  <th className="bg-neutral-800 px-2.5 py-1 text-right">Budget</th>
-                  <th className="bg-neutral-800 px-2.5 py-1 text-right">Variance</th>
-                </Fragment>
+                <th key={m} className="bg-neutral-800 px-2.5 py-1 text-right">
+                  Actual
+                </th>
               ))}
               <th className="bg-neutral-800 px-2.5 py-1 text-right">Actual</th>
               <th className="bg-neutral-800 px-2.5 py-1 text-right">Budget</th>
@@ -212,10 +204,7 @@ export default function PnlTable() {
                       </Fragment>
                     );
                   })}
-                  <TotalRow
-                    label={section.totalLabel}
-                    total={section.total}
-                  />
+                  <TotalRow label={section.totalLabel} total={section.total} />
                 </Fragment>
               );
             })}

@@ -7,5 +7,5 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  redirect(user ? "/hoa-docs" : "/login");
+  redirect(user ? "/hoa-docs" : "/verify");
 }

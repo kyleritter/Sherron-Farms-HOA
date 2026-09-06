@@ -126,14 +126,14 @@ function DocHeaderLink({ label, doc }: { label: string; doc: string }) {
   );
 }
 
-export default function CheatSheet() {
+export default function QuickReferenceGuide() {
   const [open, setOpen] = useState(false);
 
   return (
     <section className="overflow-hidden rounded-md border border-neutral-200 bg-white">
       <div className="px-4 py-3">
         <h2 className="text-base font-semibold text-neutral-900">
-          HOA Documents Cheat Sheet
+          HOA Documents Quick Reference Guide
         </h2>
         <p className="mt-0.5 text-xs text-neutral-600">
           Where to find things across the Articles of Incorporation,

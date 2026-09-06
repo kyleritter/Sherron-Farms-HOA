@@ -2,7 +2,8 @@
 
 import AppNav from "@/components/app-nav";
 import ChatPanel from "@/components/chat-panel";
-import CheatSheet from "./cheat-sheet";
+import QuickReferenceGuide from "./quick-reference-guide";
+import RecentMinutes from "./recent-minutes";
 
 export default function HoaDocsClient({ isAdmin }: { isAdmin: boolean }) {
   return (
@@ -22,8 +23,12 @@ export default function HoaDocsClient({ isAdmin }: { isAdmin: boolean }) {
             </div>
           </div>
 
+          <div className="mt-6">
+            <RecentMinutes />
+          </div>
+
           <div className="mt-6 pb-2">
-            <CheatSheet />
+            <QuickReferenceGuide />
           </div>
         </div>
       </div>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 export default function VerifyPage() {
   const router = useRouter();
@@ -14,6 +15,23 @@ export default function VerifyPage() {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
+
+    // No separate sign-in step right now -- starting a session here (an
+    // anonymous Supabase Auth user) is what gives this browser a
+    // `profiles` row for the address/password check below and for the
+    // resident-only pages afterward. Skipped if one already exists.
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      const { error: signInError } = await supabase.auth.signInAnonymously();
+      if (signInError) {
+        setError("Couldn't start your session. Try again.");
+        setSubmitting(false);
+        return;
+      }
+    }
 
     const res = await fetch("/api/auth/verify", {
       method: "POST",
@@ -28,7 +46,7 @@ export default function VerifyPage() {
       return;
     }
 
-    router.push(data.isAdmin ? "/admin" : "/chat");
+    router.push(data.isAdmin ? "/admin" : "/hoa-docs");
     router.refresh();
   }
 
@@ -36,11 +54,11 @@ export default function VerifyPage() {
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-neutral-50 px-4 text-center">
       <div>
         <h1 className="text-2xl font-semibold text-neutral-900">
-          One more step
+          Sherron Farms HOA Resident Portal
         </h1>
         <p className="mt-2 max-w-md text-sm text-neutral-600">
-          You&apos;re signed in. To confirm you&apos;re a Sherron Farms
-          resident, enter your street address and the community password.
+          Enter your street address and the community password to get
+          started.
         </p>
       </div>
 
@@ -77,7 +95,7 @@ export default function VerifyPage() {
           disabled={submitting}
           className="mt-2 rounded-md bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
         >
-          {submitting ? "Verifying…" : "Verify"}
+          {submitting ? "Verifying…" : "Continue"}
         </button>
       </form>
 

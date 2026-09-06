@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("status, full_name, email")
+    .select("status, full_name, email, street_address")
     .eq("id", user.id)
     .single();
   if (profile?.status !== "approved") {
@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
   // 2. Record the individual submission.
   const authorDisplayName = isAnonymous
     ? null
-    : displayNameInput || profile.full_name || profile.email || "Resident";
+    : displayNameInput || profile.full_name || profile.street_address || profile.email || "Resident";
 
   const { error: ideaError } = await admin.from("ideas").insert({
     topic_id: topicId,
