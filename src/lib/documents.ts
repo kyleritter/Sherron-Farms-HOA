@@ -29,3 +29,25 @@ export async function fetchDocumentSignedUrl(
   const body = (await res.json()) as { url: string };
   return body.url;
 }
+
+// Opens a source PDF in a new tab, jumped to the given page via the
+// browser's native #page= anchor. The tab is opened synchronously (on
+// the click gesture) so popup blockers don't catch it while the signed
+// URL is fetched, then redirected once the URL is known -- works for
+// both the chat's inline citations and the cheat sheet's header links,
+// and (unlike an in-page side panel) behaves the same on mobile/tablet.
+export function openDocumentInNewTab(documentName: string, page = 1) {
+  const win = window.open("", "_blank");
+  fetchDocumentSignedUrl(documentName)
+    .then((url) => {
+      const target = `${url}#page=${page}`;
+      if (win) {
+        win.location.href = target;
+      } else {
+        window.open(target, "_blank");
+      }
+    })
+    .catch(() => {
+      win?.close();
+    });
+}

@@ -4,11 +4,10 @@ import { useState, useRef, useEffect, FormEvent } from "react";
 import { Send } from "lucide-react";
 import ReactMarkdown, { type Components, defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { HOA_DOCUMENT_NAMES } from "@/lib/documents";
-import type { DocumentTarget } from "./document-panel";
+import { HOA_DOCUMENT_NAMES, openDocumentInNewTab } from "@/lib/documents";
 
 // Short, readable names for inline citations -- distinct from the
-// longer sidebar/document-panel labels in lib/documents.ts.
+// longer labels used elsewhere in lib/documents.ts.
 const CITATION_LABELS: Record<string, string> = {
   "CCRs.pdf": "CC&Rs",
   "Bylaws.pdf": "Bylaws",
@@ -56,45 +55,37 @@ function linkifyCitations(markdown: string): string {
   });
 }
 
-function makeMarkdownComponents(
-  onOpenCitation: (target: DocumentTarget) => void
-): Components {
-  return {
-    a: ({ href, children }) => {
-      if (href?.startsWith("citation://")) {
-        const rest = href.slice("citation://".length);
-        const lastSlash = rest.lastIndexOf("/");
-        const docName = decodeURIComponent(rest.slice(0, lastSlash));
-        const page = parseInt(rest.slice(lastSlash + 1), 10) || 1;
-        return (
-          <button
-            type="button"
-            onClick={() => onOpenCitation({ name: docName, page })}
-            className="font-medium text-blue-700 underline decoration-dotted underline-offset-2 hover:text-blue-900"
-          >
-            {children}
-          </button>
-        );
-      }
+const markdownComponents: Components = {
+  a: ({ href, children }) => {
+    if (href?.startsWith("citation://")) {
+      const rest = href.slice("citation://".length);
+      const lastSlash = rest.lastIndexOf("/");
+      const docName = decodeURIComponent(rest.slice(0, lastSlash));
+      const page = parseInt(rest.slice(lastSlash + 1), 10) || 1;
       return (
-        <a
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline"
+        <button
+          type="button"
+          onClick={() => openDocumentInNewTab(docName, page)}
+          className="font-medium text-blue-700 underline decoration-dotted underline-offset-2 hover:text-blue-900"
         >
           {children}
-        </a>
+        </button>
       );
-    },
-  };
-}
+    }
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline"
+      >
+        {children}
+      </a>
+    );
+  },
+};
 
-export default function ChatPanel({
-  onOpenCitation,
-}: {
-  onOpenCitation: (target: DocumentTarget) => void;
-}) {
+export default function ChatPanel() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -102,12 +93,16 @@ export default function ChatPanel({
   // actually landed in `messages` -- drives the typing indicator, kept
   // separate from `loading` (which also disables the input/button).
   const [awaitingReply, setAwaitingReply] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  const markdownComponents = makeMarkdownComponents(onOpenCitation);
+  // Scrolls only this panel's own message list, not any ancestor
+  // scroll container -- `scrollIntoView` on a bottom-anchor element
+  // was scrolling the *page* itself (the /hoa-docs column that holds
+  // both the chat and the cheat sheet is its own scroll container),
+  // which is what caused the whole page to jump on every message.
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = scrollContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages, awaitingReply]);
 
   async function handleSubmit(e: FormEvent) {
@@ -199,14 +194,14 @@ export default function ChatPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-neutral-50">
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4">
         <div className="mx-auto flex max-w-2xl flex-col gap-4">
           {messages.length === 0 && (
             <p className="text-sm text-neutral-500">
               Ask about the CC&amp;Rs, Bylaws, ARC Guidelines, budget, or
               meeting minutes — e.g. &ldquo;Are sheds allowed, and what size
               limit applies?&rdquo; Citations you can click will open the
-              exact page on the right.
+              exact page in a new tab.
             </p>
           )}
           {messages.map((m, i) =>
@@ -241,7 +236,6 @@ export default function ChatPanel({
             )
           )}
           {awaitingReply && <TypingIndicator />}
-          <div ref={bottomRef} />
         </div>
       </div>
 

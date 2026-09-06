@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown, FileText } from "lucide-react";
-import type { DocumentTarget } from "@/components/document-panel";
+import { openDocumentInNewTab } from "@/lib/documents";
 
 const CHEAT_SHEET = [
   {
@@ -112,21 +112,13 @@ function Cell({ text }: { text: string }) {
   );
 }
 
-function DocHeaderLink({
-  label,
-  doc,
-  onOpenDocument,
-}: {
-  label: string;
-  doc: string;
-  onOpenDocument: (target: DocumentTarget) => void;
-}) {
+function DocHeaderLink({ label, doc }: { label: string; doc: string }) {
   return (
     <button
       type="button"
-      onClick={() => onOpenDocument({ name: doc, page: 1 })}
+      onClick={() => openDocumentInNewTab(doc, 1)}
       className="inline-flex items-center gap-1 text-left uppercase hover:underline"
-      title={`Open ${label} (PDF)`}
+      title={`Open ${label} (PDF, opens in a new tab)`}
     >
       <span>{label}</span>
       <FileText size={12} className="shrink-0 opacity-80" />
@@ -134,11 +126,7 @@ function DocHeaderLink({
   );
 }
 
-export default function CheatSheet({
-  onOpenDocument,
-}: {
-  onOpenDocument: (target: DocumentTarget) => void;
-}) {
+export default function CheatSheet() {
   const [open, setOpen] = useState(false);
 
   return (
@@ -182,11 +170,7 @@ export default function CheatSheet({
                   key={col.key}
                   className="bg-neutral-900 px-3 py-2.5 text-neutral-100"
                 >
-                  <DocHeaderLink
-                    label={col.label}
-                    doc={col.doc}
-                    onOpenDocument={onOpenDocument}
-                  />
+                  <DocHeaderLink label={col.label} doc={col.doc} />
                 </th>
               ))}
             </tr>

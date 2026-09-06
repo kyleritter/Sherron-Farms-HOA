@@ -3,20 +3,11 @@
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
-const CATEGORIES = [
-  { value: "amendment", label: "Bylaw / CC&R amendment" },
-  { value: "arc", label: "ARC / architectural" },
-  { value: "event", label: "Event idea" },
-  { value: "question", label: "Question for the board" },
-  { value: "other", label: "Other" },
-];
-
 export default function IdeaSubmitForm({ defaultName }: { defaultName: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [category, setCategory] = useState("other");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [displayName, setDisplayName] = useState(defaultName);
   const [submitting, setSubmitting] = useState(false);
@@ -32,7 +23,7 @@ export default function IdeaSubmitForm({ defaultName }: { defaultName: string })
     const res = await fetch("/api/ideas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, body, category, isAnonymous, displayName }),
+      body: JSON.stringify({ title, body, isAnonymous, displayName }),
     });
     const data = await res.json().catch(() => ({}));
     setSubmitting(false);
@@ -44,7 +35,6 @@ export default function IdeaSubmitForm({ defaultName }: { defaultName: string })
 
     setTitle("");
     setBody("");
-    setCategory("other");
     setOpen(false);
     setNotice(
       data.merged
@@ -88,17 +78,6 @@ export default function IdeaSubmitForm({ defaultName }: { defaultName: string })
         className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
         required
       />
-      <select
-        value={category}
-        onChange={(e) => setCategory(e.target.value)}
-        className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
-      >
-        {CATEGORIES.map((c) => (
-          <option key={c.value} value={c.value}>
-            {c.label}
-          </option>
-        ))}
-      </select>
 
       <label className="flex items-center gap-2 text-sm text-neutral-700">
         <input

@@ -5,6 +5,43 @@ import { ai, GEMINI_MODEL, embedText } from "@/lib/gemini";
 const CATEGORIES = ["amendment", "arc", "event", "question", "other"] as const;
 type Category = (typeof CATEGORIES)[number];
 
+// Categorizes a new idea with the model instead of asking the resident
+// to pick from a dropdown -- only called when a submission doesn't
+// match an existing open topic (a merged submission inherits its
+// topic's existing category). Falls back to "other" on any failure.
+async function classifyCategory(
+  title: string,
+  ideaBody: string
+): Promise<Category> {
+  const prompt = `Classify this HOA resident submission into exactly one category. Respond with ONLY the single category word below, nothing else -- no punctuation, no explanation.
+
+Categories:
+- amendment: proposes changing or adding a bylaw, CC&R, or other governing rule
+- arc: architectural/design topics (fences, paint, sheds, landscaping, ARC approvals)
+- event: a social event, gathering, or community activity idea
+- question: a question for the board that isn't proposing a change
+- other: anything that doesn't clearly fit the above
+
+Title: ${title}
+Description: ${ideaBody}`;
+
+  try {
+    const result = await ai.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+    const raw = (result.text ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z]/g, "");
+    return (CATEGORIES as readonly string[]).includes(raw)
+      ? (raw as Category)
+      : "other";
+  } catch {
+    return "other";
+  }
+}
+
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const {
@@ -24,13 +61,12 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const title = typeof body?.title === "string" ? body.title.trim() : "";
   const ideaBody = typeof body?.body === "string" ? body.body.trim() : "";
-  const category = CATEGORIES.includes(body?.category) ? (body.category as Category) : null;
   const isAnonymous = Boolean(body?.isAnonymous);
   const displayNameInput = typeof body?.displayName === "string" ? body.displayName.trim() : "";
 
-  if (!title || !ideaBody || !category) {
+  if (!title || !ideaBody) {
     return NextResponse.json(
-      { error: "Title, description, and category are all required." },
+      { error: "Title and description are required." },
       { status: 400 }
     );
   }
@@ -51,6 +87,7 @@ export async function POST(req: NextRequest) {
   if (merged) {
     topicId = match![0].topic_id;
   } else {
+    const category = await classifyCategory(title, ideaBody);
     const { data: newTopic, error: topicError } = await admin
       .from("idea_topics")
       .insert({ title, category, summary: ideaBody })

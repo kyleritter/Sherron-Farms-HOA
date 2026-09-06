@@ -1,23 +1,7 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import ChatClient from "./chat-client";
 
-export default async function ChatPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, status")
-    .eq("id", user.id)
-    .single();
-  if (!profile || profile.status === "pending") redirect("/verify");
-
-  return <ChatClient isAdmin={profile.role === "admin"} />;
+// The chat now lives embedded on /hoa-docs; this route stays only so
+// old links/bookmarks to /chat still land somewhere useful.
+export default function ChatPage() {
+  redirect("/hoa-docs");
 }
