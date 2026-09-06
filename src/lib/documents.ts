@@ -19,6 +19,28 @@ export const HOA_DOCUMENT_NAMES: readonly string[] = HOA_DOCUMENTS.map(
   (d) => d.name
 );
 
+// Financial documents (monthly statements + annual budget), shown in the
+// document repository at the bottom of the Financials page. Same
+// 'hoa-documents' Supabase Storage bucket, uploaded via
+// scripts/upload_financial_pdfs.py. These aren't used as chat citation
+// targets, just direct downloads/views.
+export const FINANCIAL_DOCUMENTS = [
+  { name: "Financials - 2026 Annual Budget.pdf", label: "2026 Annual Budget" },
+  { name: "Financials - January 2026.pdf", label: "January 2026 Statement" },
+  { name: "Financials - February 2026.pdf", label: "February 2026 Statement" },
+  { name: "Financials - March 2026.pdf", label: "March 2026 Statement" },
+  { name: "Financials - April 2026.pdf", label: "April 2026 Statement" },
+  { name: "Financials - May 2026.pdf", label: "May 2026 Statement" },
+  { name: "Financials - June 2026.pdf", label: "June 2026 Statement" },
+  { name: "Financials - July 2026.pdf", label: "July 2026 Statement" },
+] as const;
+
+export type FinancialDocumentName =
+  (typeof FINANCIAL_DOCUMENTS)[number]["name"];
+
+export const FINANCIAL_DOCUMENT_NAMES: readonly string[] =
+  FINANCIAL_DOCUMENTS.map((d) => d.name);
+
 export async function fetchDocumentSignedUrl(
   documentName: string
 ): Promise<string> {

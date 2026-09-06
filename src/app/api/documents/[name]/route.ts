@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { HOA_DOCUMENT_NAMES } from "@/lib/documents";
+import { HOA_DOCUMENT_NAMES, FINANCIAL_DOCUMENT_NAMES } from "@/lib/documents";
 
 // A fixed allowlist instead of trusting the URL param directly, since
 // this becomes a storage path.
-const KNOWN_DOCUMENTS = new Set(HOA_DOCUMENT_NAMES);
+const KNOWN_DOCUMENTS = new Set([...HOA_DOCUMENT_NAMES, ...FINANCIAL_DOCUMENT_NAMES]);
 
 const SIGNED_URL_TTL_SECONDS = 60 * 10; // 10 minutes -- plenty for one open/view
 
