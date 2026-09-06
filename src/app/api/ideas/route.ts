@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { ai, GEMINI_MODEL, embedText } from "@/lib/gemini";
+import { regenerateTopicSummary } from "@/lib/ideas";
 
 const CATEGORIES = ["amendment", "arc", "event", "question", "other"] as const;
 type Category = (typeof CATEGORIES)[number];
@@ -117,49 +118,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Couldn't save the idea." }, { status: 500 });
   }
 
-  // 3. Regenerate the topic's AI summary from every idea now under it.
-  const { data: topicIdeas } = await admin
-    .from("ideas")
-    .select("title, body")
-    .eq("topic_id", topicId);
-
-  if (topicIdeas && topicIdeas.length > 0) {
-    const combined = topicIdeas
-      .map((i, idx) => `Submission ${idx + 1}: ${i.title}\n${i.body}`)
-      .join("\n\n");
-
-    const prompt = `These are resident-submitted ideas for an HOA meeting agenda, grouped together because they're about the same underlying topic.
-
-${combined}
-
-Write a JSON object with exactly two fields:
-- "title": a short (under 10 words) neutral label for this topic
-- "summary": 2-4 sentences stating the shared main point, then noting any meaningfully different variations residents raised (specific numbers, conditions, or alternative approaches). Be concrete and neutral -- don't advocate for any side.
-
-Respond with ONLY the JSON object, no markdown fences.`;
-
-    try {
-      const result = await ai.models.generateContent({
-        model: GEMINI_MODEL,
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-      });
-      const raw = (result.text ?? "").trim().replace(/^```json\s*|\s*```$/g, "");
-      const parsed = JSON.parse(raw);
-      if (parsed.title && parsed.summary) {
-        await admin
-          .from("idea_topics")
-          .update({
-            title: parsed.title,
-            summary: parsed.summary,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", topicId);
-      }
-    } catch {
-      // AI summary is a nice-to-have -- if it fails, the topic still
-      // exists with its original title/summary from the first idea.
-    }
-  }
+  // 3. Regenerate the topic's AI summary from every idea (and comment)
+  // now under it.
+  await regenerateTopicSummary(admin, topicId);
 
   return NextResponse.json({ topicId, merged });
 }

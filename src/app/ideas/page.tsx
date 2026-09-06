@@ -13,6 +13,7 @@ type TopicRow = {
   addressed_at: string | null;
   decision_summary: string | null;
   addressed_notes: string | null;
+  archived: boolean;
   created_at: string;
 };
 
@@ -20,6 +21,15 @@ type IdeaRow = {
   id: string;
   topic_id: string;
   title: string;
+  body: string;
+  author_display_name: string | null;
+  is_anonymous: boolean;
+  created_at: string;
+};
+
+type CommentRow = {
+  id: string;
+  topic_id: string;
   body: string;
   author_display_name: string | null;
   is_anonymous: boolean;
@@ -42,15 +52,19 @@ export default async function IdeasPage() {
 
   const isAdmin = profile.role === "admin";
 
-  const [{ data: topics }, { data: ideas }, { data: voteCounts }, { data: myVotes }] =
+  const [{ data: topics }, { data: ideas }, { data: comments }, { data: voteCounts }, { data: myVotes }] =
     await Promise.all([
       supabase
         .from("idea_topics")
-        .select("id, title, summary, category, status, addressed_at, decision_summary, addressed_notes, created_at")
+        .select("id, title, summary, category, status, addressed_at, decision_summary, addressed_notes, archived, created_at")
         .order("created_at", { ascending: false }),
       supabase
         .from("ideas")
         .select("id, topic_id, title, body, author_display_name, is_anonymous, created_at")
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("idea_comments")
+        .select("id, topic_id, body, author_display_name, is_anonymous, created_at")
         .order("created_at", { ascending: true }),
       supabase.rpc("get_idea_vote_counts"),
       supabase.from("idea_votes").select("topic_id, vote_value").eq("voter_id", user.id),
@@ -61,6 +75,13 @@ export default async function IdeasPage() {
     const list = ideasByTopic.get(idea.topic_id) ?? [];
     list.push(idea);
     ideasByTopic.set(idea.topic_id, list);
+  }
+
+  const commentsByTopic = new Map<string, CommentRow[]>();
+  for (const comment of (comments ?? []) as CommentRow[]) {
+    const list = commentsByTopic.get(comment.topic_id) ?? [];
+    list.push(comment);
+    commentsByTopic.set(comment.topic_id, list);
   }
 
   const countsByTopic = new Map<string, { upvotes: number; downvotes: number }>();
@@ -75,26 +96,33 @@ export default async function IdeasPage() {
 
   const allTopics = (topics ?? []) as TopicRow[];
   const openTopics = allTopics
-    .filter((t) => t.status === "open")
+    .filter((t) => t.status === "open" && !t.archived)
     .sort((a, b) => {
       const na = (countsByTopic.get(a.id)?.upvotes ?? 0) - (countsByTopic.get(a.id)?.downvotes ?? 0);
       const nb = (countsByTopic.get(b.id)?.upvotes ?? 0) - (countsByTopic.get(b.id)?.downvotes ?? 0);
       return nb - na;
     });
   const addressedTopics = allTopics
-    .filter((t) => t.status === "addressed")
+    .filter((t) => t.status === "addressed" && !t.archived)
     .sort((a, b) => (b.addressed_at ?? "").localeCompare(a.addressed_at ?? ""));
+  // Archived topics are hidden from residents entirely and only shown
+  // to admins, in their own section below -- archiving can happen
+  // either before or after a topic is marked addressed.
+  const archivedTopics = allTopics
+    .filter((t) => t.archived)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
 
   return (
     <div className="flex min-h-screen flex-col bg-neutral-50">
       <AppNav isAdmin={isAdmin} />
 
       <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
-        <h1 className="text-xl font-semibold text-neutral-900">Ideas for the next meeting</h1>
+        <h1 className="text-xl font-semibold text-neutral-900">Provide ideas for the HOA to consider</h1>
         <p className="mt-1 text-sm text-neutral-600">
           Amendments, ARC changes, event ideas, questions for the board — submit
           one below. Similar submissions get grouped and summarized
           automatically. Vote once per topic; votes are always anonymous.
+          Please keep suggestions constructive and actionable.
         </p>
 
         <div className="mt-6">
@@ -112,6 +140,7 @@ export default async function IdeasPage() {
                 key={topic.id}
                 topic={topic}
                 ideas={ideasByTopic.get(topic.id) ?? []}
+                comments={commentsByTopic.get(topic.id) ?? []}
                 upvotes={counts.upvotes}
                 downvotes={counts.downvotes}
                 myVote={myVoteByTopic.get(topic.id) ?? null}
@@ -134,6 +163,32 @@ export default async function IdeasPage() {
                     key={topic.id}
                     topic={topic}
                     ideas={ideasByTopic.get(topic.id) ?? []}
+                    comments={commentsByTopic.get(topic.id) ?? []}
+                    upvotes={counts.upvotes}
+                    downvotes={counts.downvotes}
+                    myVote={myVoteByTopic.get(topic.id) ?? null}
+                    isAdmin={isAdmin}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {isAdmin && archivedTopics.length > 0 && (
+          <div className="mt-12">
+            <h2 className="text-sm font-medium text-neutral-500">
+              Archived ({archivedTopics.length}) — visible to admins only
+            </h2>
+            <div className="mt-3 flex flex-col gap-3">
+              {archivedTopics.map((topic) => {
+                const counts = countsByTopic.get(topic.id) ?? { upvotes: 0, downvotes: 0 };
+                return (
+                  <TopicCard
+                    key={topic.id}
+                    topic={topic}
+                    ideas={ideasByTopic.get(topic.id) ?? []}
+                    comments={commentsByTopic.get(topic.id) ?? []}
                     upvotes={counts.upvotes}
                     downvotes={counts.downvotes}
                     myVote={myVoteByTopic.get(topic.id) ?? null}

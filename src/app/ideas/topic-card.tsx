@@ -21,6 +21,14 @@ type IdeaSubmission = {
   created_at: string;
 };
 
+type IdeaComment = {
+  id: string;
+  body: string;
+  author_display_name: string | null;
+  is_anonymous: boolean;
+  created_at: string;
+};
+
 type Topic = {
   id: string;
   title: string;
@@ -30,11 +38,13 @@ type Topic = {
   addressed_at: string | null;
   decision_summary: string | null;
   addressed_notes: string | null;
+  archived: boolean;
 };
 
 export default function TopicCard({
   topic,
   ideas,
+  comments,
   upvotes,
   downvotes,
   myVote,
@@ -42,6 +52,7 @@ export default function TopicCard({
 }: {
   topic: Topic;
   ideas: IdeaSubmission[];
+  comments: IdeaComment[];
   upvotes: number;
   downvotes: number;
   myVote: 1 | -1 | null;
@@ -52,6 +63,9 @@ export default function TopicCard({
   const [addressing, setAddressing] = useState(false);
   const [decisionSummary, setDecisionSummary] = useState("");
   const [addressedNotes, setAddressedNotes] = useState("");
+  const [commenting, setCommenting] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const [commentError, setCommentError] = useState<string | null>(null);
   const [localUp, setLocalUp] = useState(upvotes);
   const [localDown, setLocalDown] = useState(downvotes);
   const [localVote, setLocalVote] = useState(myVote);
@@ -100,6 +114,38 @@ export default function TopicCard({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "open" }),
+    });
+    setBusy(false);
+    router.refresh();
+  }
+
+  async function submitComment() {
+    if (!commentText.trim()) return;
+    setBusy(true);
+    setCommentError(null);
+    const res = await fetch(`/api/ideas/topic/${topic.id}/comment`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body: commentText }),
+    });
+    const data = await res.json().catch(() => null);
+    setBusy(false);
+    if (!res.ok) {
+      setCommentError(data?.error ?? "Couldn't save the comment.");
+      return;
+    }
+    setCommentText("");
+    setCommenting(false);
+    setExpanded(true);
+    router.refresh();
+  }
+
+  async function toggleArchive() {
+    setBusy(true);
+    await fetch(`/api/ideas/topic/${topic.id}/archive`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archived: !topic.archived }),
     });
     setBusy(false);
     router.refresh();
@@ -159,7 +205,31 @@ export default function TopicCard({
                   </p>
                 </div>
               ))}
+
+              {comments.length > 0 && (
+                <div className="mt-1 flex flex-col gap-2 border-t border-neutral-100 pt-2">
+                  <p className="text-xs font-medium text-neutral-500">
+                    Comments ({comments.length})
+                  </p>
+                  {comments.map((comment) => (
+                    <div key={comment.id} className="rounded bg-white p-2.5 text-sm ring-1 ring-neutral-100">
+                      <p className="text-neutral-700">{comment.body}</p>
+                      <p className="mt-1 text-xs text-neutral-400">
+                        {comment.is_anonymous ? "Anonymous" : comment.author_display_name ?? "Resident"}
+                        {" · "}
+                        {new Date(comment.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+          )}
+
+          {topic.archived && (
+            <p className="mt-3 text-xs font-medium text-neutral-400">
+              Archived{topic.status === "addressed" ? " (was addressed)" : ""}
+            </p>
           )}
 
           {topic.status === "addressed" && (
@@ -183,48 +253,99 @@ export default function TopicCard({
             </div>
           )}
 
-          {isAdmin && topic.status === "open" && (
-            <div className="mt-3">
-              {!addressing ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {!commenting ? (
+              <button
+                onClick={() => setCommenting(true)}
+                className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100"
+              >
+                Add comment
+              </button>
+            ) : null}
+
+            {isAdmin && topic.status === "open" && !addressing && (
+              <button
+                onClick={() => setAddressing(true)}
+                className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100"
+              >
+                Mark addressed
+              </button>
+            )}
+
+            {isAdmin && (
+              <button
+                onClick={toggleArchive}
+                disabled={busy}
+                className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 disabled:opacity-50"
+              >
+                {topic.archived ? "Unarchive" : "Archive"}
+              </button>
+            )}
+          </div>
+
+          {commenting && (
+            <div className="mt-2 flex flex-col gap-2 rounded-md border border-neutral-200 bg-neutral-50 p-3">
+              <textarea
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Add a comment for the board / other residents to see"
+                rows={2}
+                className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
+              />
+              {commentError && <p className="text-xs text-red-600">{commentError}</p>}
+              <div className="flex gap-2">
                 <button
-                  onClick={() => setAddressing(true)}
-                  className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100"
+                  onClick={submitComment}
+                  disabled={busy || !commentText.trim()}
+                  className="rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
                 >
-                  Mark addressed
+                  Post comment
                 </button>
-              ) : (
-                <div className="flex flex-col gap-2 rounded-md border border-neutral-200 bg-neutral-50 p-3">
-                  <textarea
-                    value={decisionSummary}
-                    onChange={(e) => setDecisionSummary(e.target.value)}
-                    placeholder="What was decided / the action taken"
-                    rows={2}
-                    className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
-                  />
-                  <textarea
-                    value={addressedNotes}
-                    onChange={(e) => setAddressedNotes(e.target.value)}
-                    placeholder="Any other notes (optional)"
-                    rows={2}
-                    className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={markAddressed}
-                      disabled={busy || !decisionSummary.trim()}
-                      className="rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={() => setAddressing(false)}
-                      className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
+                <button
+                  onClick={() => {
+                    setCommenting(false);
+                    setCommentText("");
+                    setCommentError(null);
+                  }}
+                  className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {isAdmin && addressing && (
+            <div className="mt-2 flex flex-col gap-2 rounded-md border border-neutral-200 bg-neutral-50 p-3">
+              <textarea
+                value={decisionSummary}
+                onChange={(e) => setDecisionSummary(e.target.value)}
+                placeholder="What was decided / the action taken"
+                rows={2}
+                className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
+              />
+              <textarea
+                value={addressedNotes}
+                onChange={(e) => setAddressedNotes(e.target.value)}
+                placeholder="Any other notes (optional)"
+                rows={2}
+                className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={markAddressed}
+                  disabled={busy || !decisionSummary.trim()}
+                  className="rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setAddressing(false)}
+                  className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           )}
         </div>
