@@ -11,6 +11,7 @@ export const HOA_DOCUMENTS = [
     name: "Articles of Incorporation.pdf",
     label: "Articles of Incorporation",
   },
+  { name: "Pool Rules - 2026.pdf", label: "2026 Pool Rules" },
 ] as const;
 
 export type HoaDocumentName = (typeof HOA_DOCUMENTS)[number]["name"];

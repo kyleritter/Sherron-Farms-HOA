@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sherron Farms HOA Doc Reference Portal",
-  description: "Sherron Farms HOA governing documents, cheat sheet, and Q&A assistant.",
+  title: "SF-HOA-Doc-Ref",
+  description:
+    "An unofficial, resident-run reference for Sherron Farms HOA documents, financials, and community Q&A.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

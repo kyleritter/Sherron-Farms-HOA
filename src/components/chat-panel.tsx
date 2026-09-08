@@ -20,6 +20,7 @@ const CITATION_LABELS: Record<string, string> = {
   "Minutes - June 11, 2026.pdf": "Minutes, June 11, 2026",
   "Minutes - May 14, 2026.pdf": "Minutes, May 14, 2026",
   "Minutes - March 12, 2026.pdf": "Minutes, March 12, 2026",
+  "Pool Rules - 2026.pdf": "2026 Pool Rules",
 };
 
 type Message = { role: "user" | "assistant"; content: string };

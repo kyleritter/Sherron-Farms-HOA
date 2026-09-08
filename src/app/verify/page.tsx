@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -52,14 +53,21 @@ export default function VerifyPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-neutral-50 px-4 text-center">
-      <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">
-          Sherron Farms HOA Resident Portal
-        </h1>
-        <p className="mt-2 max-w-md text-sm text-neutral-600">
-          Enter your street address and the community password to get
-          started.
-        </p>
+      <div className="flex flex-col items-center gap-3">
+        <Image src="/logo.png" alt="SF-HOA-Doc-Ref logo" width={56} height={56} priority />
+        <div>
+          <h1 className="text-2xl font-semibold text-neutral-900">
+            SF-HOA-Doc-Ref
+          </h1>
+          <p className="mt-1 text-xs text-neutral-500">
+            An unofficial, resident-run reference site &mdash; not an official
+            Sherron Farms HOA site.
+          </p>
+          <p className="mt-2 max-w-md text-sm text-neutral-600">
+            Enter your street address and the community password to get
+            started.
+          </p>
+        </div>
       </div>
 
       <form

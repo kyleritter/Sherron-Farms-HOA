@@ -96,6 +96,11 @@ FILES = [
         "document_name": "Minutes - June 11, 2026.pdf",
         "document_type": "Minutes",
     },
+    {
+        "path": OUTPUT_DIR / "pool_rules_2026.json",
+        "document_name": "Pool Rules - 2026.pdf",
+        "document_type": "Pool Rules",
+    },
 ]
 
 CHUNK_TYPES = {"CompositeElement", "TableChunk", "Table"}

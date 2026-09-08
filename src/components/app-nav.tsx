@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, ShieldCheck } from "lucide-react";
@@ -23,7 +24,20 @@ export default function AppNav({ isAdmin }: { isAdmin: boolean }) {
   }
 
   return (
-    <header className="flex items-center justify-between border-b border-neutral-200 bg-white px-4 py-2.5">
+    <header className="flex items-center justify-between border-b-2 border-brand-green bg-white px-4 py-2.5">
+      <div className="flex items-center gap-3">
+        <Image
+          src="/logo.png"
+          alt="SF-HOA-Doc-Ref logo"
+          width={32}
+          height={32}
+          className="shrink-0"
+          priority
+        />
+        <span className="hidden text-sm font-semibold tracking-wide text-brand-dark sm:inline">
+          SF-HOA-Doc-Ref
+        </span>
+      </div>
       <nav className="flex items-center gap-1">
         {LINKS.map((link) => {
           const active = pathname?.startsWith(link.href);
@@ -33,7 +47,7 @@ export default function AppNav({ isAdmin }: { isAdmin: boolean }) {
               href={link.href}
               className={`rounded-md px-3 py-1.5 text-sm font-medium ${
                 active
-                  ? "bg-neutral-900 text-white"
+                  ? "bg-brand-green text-white"
                   : "text-neutral-600 hover:bg-neutral-100"
               }`}
             >
@@ -48,7 +62,7 @@ export default function AppNav({ isAdmin }: { isAdmin: boolean }) {
             href="/admin"
             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
               pathname?.startsWith("/admin")
-                ? "bg-neutral-900 text-white"
+                ? "bg-brand-brown text-white"
                 : "text-neutral-600 hover:bg-neutral-100"
             }`}
           >

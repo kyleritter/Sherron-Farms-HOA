@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, FileText } from "lucide-react";
+import { ChevronDown, FileText, Waves } from "lucide-react";
 import { openDocumentInNewTab } from "@/lib/documents";
 
 const CHEAT_SHEET = [
@@ -82,8 +82,8 @@ const COLUMNS = [
     label: "Articles of Incorporation",
     doc: "Articles of Incorporation.pdf",
   },
-  { key: "ccrs", label: "CC&Rs (Declaration)", doc: "CCRs.pdf" },
   { key: "bylaws", label: "Bylaws", doc: "Bylaws.pdf" },
+  { key: "ccrs", label: "CC&Rs (Declaration)", doc: "CCRs.pdf" },
   { key: "arc", label: "ARC Guidelines", doc: "ARC Guidelines.pdf" },
 ] as const;
 
@@ -143,6 +143,19 @@ export default function QuickReferenceGuide() {
         </p>
       </div>
 
+      <div className="border-t border-neutral-200 bg-neutral-50 px-4 py-2.5">
+        <button
+          type="button"
+          onClick={() => openDocumentInNewTab("Pool Rules - 2026.pdf", 1)}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 hover:text-neutral-900 hover:underline"
+          title="Open the 2026 Pool Rules (PDF, opens in a new tab)"
+        >
+          <Waves size={14} className="shrink-0 opacity-80" />
+          <span>2026 Pool Rules</span>
+          <FileText size={12} className="shrink-0 opacity-60" />
+        </button>
+      </div>
+
       <div className="overflow-x-auto border-t border-neutral-200">
         <table className="w-full min-w-[720px] border-collapse text-sm">
           <thead>
@@ -187,18 +200,11 @@ export default function QuickReferenceGuide() {
                   <td className="px-3 py-2.5 font-semibold text-neutral-900">
                     {row.topic}
                   </td>
-                  <td className="px-3 py-2.5">
-                    <Cell text={row.articles} />
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <Cell text={row.ccrs} />
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <Cell text={row.bylaws} />
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <Cell text={row.arc} />
-                  </td>
+                  {COLUMNS.map((col) => (
+                    <td key={col.key} className="px-3 py-2.5">
+                      <Cell text={row[col.key]} />
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>

@@ -25,61 +25,84 @@ const data = pnlData as {
   netIncome: { months: Figures[]; ytd: Figures };
 };
 
-function money(n: number) {
+// Accounting-style formatting: negative numbers always render in
+// parentheses instead of with a minus sign. `forceParens` additionally
+// wraps a non-negative amount in parentheses -- used for expense-section
+// actual/budget figures, which represent money going out even though
+// they're stored as positive numbers.
+function money(n: number, forceParens = false) {
   const rounded = Math.round(n);
-  const sign = rounded < 0 ? "-" : "";
-  return `${sign}$${Math.abs(rounded).toLocaleString()}`;
+  const formatted = `$${Math.abs(rounded).toLocaleString()}`;
+  return rounded < 0 || (forceParens && rounded > 0)
+    ? `(${formatted})`
+    : formatted;
 }
 
-function varianceColor(value: number, emphasize?: boolean) {
-  const rounded = Math.round(value);
+// `displayVariance` is already sign-adjusted for the section it belongs
+// to (see displayVarianceFor below): negative = overspend/shortfall
+// (bad -- red, parenthesized), zero or positive = on/under budget
+// (good -- green).
+function varianceColor(displayVariance: number, emphasize?: boolean) {
+  const rounded = Math.round(displayVariance);
   if (emphasize) {
-    return rounded > 0
-      ? "text-emerald-300"
-      : rounded < 0
-        ? "text-red-300"
-        : "text-neutral-300";
+    return rounded < 0 ? "text-red-300" : "text-emerald-300";
   }
-  return rounded > 0
-    ? "text-emerald-700"
-    : rounded < 0
-      ? "text-red-700"
-      : "text-neutral-500";
+  return rounded < 0 ? "text-red-700" : "text-emerald-700";
 }
 
-function YtdCells({ ytd, emphasize }: { ytd: Figures; emphasize?: boolean }) {
+// Variance is stored as (actual - budget) for every line. For expenses
+// that's backwards from how "good" and "bad" should read: spending MORE
+// than budgeted (actual > budget) is an overspend and should show as
+// negative/red, while spending less (actual < budget) is good and
+// should show as positive/green -- the opposite of the raw number's
+// sign. Income keeps the raw (actual - budget) sign, where more
+// revenue than budgeted is already positive/good.
+function displayVarianceFor(variance: number, isExpense: boolean) {
+  return isExpense ? -variance : variance;
+}
+
+function YtdCells({
+  ytd,
+  emphasize,
+  isExpense,
+}: {
+  ytd: Figures;
+  emphasize?: boolean;
+  isExpense: boolean;
+}) {
+  const displayVariance = displayVarianceFor(ytd.variance, isExpense);
   return (
     <>
-      <td className="px-2.5 py-1.5 text-right tabular-nums">{money(ytd.actual)}</td>
+      <td className="px-2.5 py-1.5 text-right tabular-nums">{money(ytd.actual, isExpense)}</td>
       <td
         className={`px-2.5 py-1.5 text-right tabular-nums ${
           emphasize ? "text-neutral-300" : "text-neutral-500"
         }`}
       >
-        {money(ytd.budget)}
+        {money(ytd.budget, isExpense)}
       </td>
-      <td className={`px-2.5 py-1.5 text-right tabular-nums ${varianceColor(ytd.variance, emphasize)}`}>
-        {money(ytd.variance)}
+      <td className={`px-2.5 py-1.5 text-right tabular-nums ${varianceColor(displayVariance, emphasize)}`}>
+        {money(displayVariance)}
       </td>
     </>
   );
 }
 
-function LineRow({ line }: { line: Line }) {
+function LineRow({ line, isExpense }: { line: Line; isExpense: boolean }) {
   return (
     <tr className="border-t border-neutral-100 hover:bg-neutral-50">
       <td className="sticky left-0 z-10 bg-white px-3 py-1.5 pl-6 text-neutral-700">
         {line.description}
       </td>
       <td className="px-2.5 py-1.5 text-right tabular-nums text-neutral-500">
-        {money(line.annualBudget)}
+        {money(line.annualBudget, isExpense)}
       </td>
       {line.months.map((m, i) => (
         <td key={i} className="px-2.5 py-1.5 text-right tabular-nums">
-          {money(m.actual)}
+          {money(m.actual, isExpense)}
         </td>
       ))}
-      <YtdCells ytd={line.ytd} />
+      <YtdCells ytd={line.ytd} isExpense={isExpense} />
     </tr>
   );
 }
@@ -101,10 +124,12 @@ function TotalRow({
   label,
   total,
   emphasize,
+  isExpense = false,
 }: {
   label: string;
   total: { annualBudget?: number; months: Figures[]; ytd: Figures };
   emphasize?: boolean;
+  isExpense?: boolean;
 }) {
   return (
     <tr
@@ -120,14 +145,14 @@ function TotalRow({
         {label}
       </td>
       <td className="px-2.5 py-2 text-right tabular-nums">
-        {total.annualBudget !== undefined ? money(total.annualBudget) : ""}
+        {total.annualBudget !== undefined ? money(total.annualBudget, isExpense) : ""}
       </td>
       {total.months.map((m, i) => (
         <td key={i} className="px-2.5 py-2 text-right tabular-nums">
-          {money(m.actual)}
+          {money(m.actual, isExpense)}
         </td>
       ))}
-      <YtdCells ytd={total.ytd} emphasize={emphasize} />
+      <YtdCells ytd={total.ytd} emphasize={emphasize} isExpense={isExpense} />
     </tr>
   );
 }
@@ -179,6 +204,11 @@ export default function PnlTable() {
           <tbody>
             {data.sections.map((section) => {
               let lastCategory = "";
+              // Expense sections' actual/budget figures are stored as
+              // positive outflow amounts and their variance is flipped
+              // for display (see displayVarianceFor) -- everything
+              // else (income) uses the numbers as stored.
+              const isExpense = section.name.toUpperCase().includes("EXPENSE");
               return (
                 <Fragment key={section.name}>
                   <tr className="border-t-2 border-neutral-300">
@@ -200,11 +230,15 @@ export default function PnlTable() {
                             colSpan={colSpan}
                           />
                         )}
-                        <LineRow line={line} />
+                        <LineRow line={line} isExpense={isExpense} />
                       </Fragment>
                     );
                   })}
-                  <TotalRow label={section.totalLabel} total={section.total} />
+                  <TotalRow
+                    label={section.totalLabel}
+                    total={section.total}
+                    isExpense={isExpense}
+                  />
                 </Fragment>
               );
             })}
