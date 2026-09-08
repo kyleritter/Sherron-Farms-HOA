@@ -18,7 +18,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-neutral-50 px-4 text-center">
       <div>
         <h1 className="text-2xl font-semibold text-neutral-900">
-          SF-HOA-Doc-Ref
+          Sherron Farms HOA Doc Reference Resource
         </h1>
         <p className="mt-2 max-w-md text-sm text-neutral-600">
           Sign in with Google, then confirm your street address and the

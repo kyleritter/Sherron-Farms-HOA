@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SF-HOA-Doc-Ref",
+  title: "Sherron Farms HOA Doc Reference Resource",
   description:
     "An unofficial, resident-run reference for Sherron Farms HOA documents, financials, and community Q&A.",
 };

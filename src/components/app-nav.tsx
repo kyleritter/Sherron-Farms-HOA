@@ -28,14 +28,14 @@ export default function AppNav({ isAdmin }: { isAdmin: boolean }) {
       <div className="flex items-center gap-3">
         <Image
           src="/logo.png"
-          alt="SF-HOA-Doc-Ref logo"
+          alt="Sherron Farms HOA Doc Reference Resource logo"
           width={32}
           height={32}
           className="shrink-0"
           priority
         />
-        <span className="hidden text-sm font-semibold tracking-wide text-brand-dark sm:inline">
-          SF-HOA-Doc-Ref
+        <span className="hidden whitespace-nowrap text-sm font-semibold tracking-wide text-brand-dark lg:inline">
+          Sherron Farms HOA Doc Reference Resource
         </span>
       </div>
       <nav className="flex items-center gap-1">

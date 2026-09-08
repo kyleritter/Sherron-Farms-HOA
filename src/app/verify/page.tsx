@@ -54,10 +54,10 @@ export default function VerifyPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-neutral-50 px-4 text-center">
       <div className="flex flex-col items-center gap-3">
-        <Image src="/logo.png" alt="SF-HOA-Doc-Ref logo" width={56} height={56} priority />
+        <Image src="/logo.png" alt="Sherron Farms HOA Doc Reference Resource logo" width={56} height={56} priority />
         <div>
           <h1 className="text-2xl font-semibold text-neutral-900">
-            SF-HOA-Doc-Ref
+            Sherron Farms HOA Doc Reference Resource
           </h1>
           <p className="mt-1 text-xs text-neutral-500">
             An unofficial, resident-run reference site &mdash; not an official
