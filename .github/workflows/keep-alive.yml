@@ -10,7 +10,43 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase Health Endpoint
+      - name: Ping Supabase with a real database query
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          curl -s -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/" \
-            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" > /dev/null
+          set -euo pipefail
+
+          # Fail loudly and by name if a repository secret is missing, rather
+          # than handing curl an empty URL (which failed with a bare "exit 3"
+          # and no indication of why).
+          if [ -z "${SUPABASE_URL:-}" ]; then
+            echo "::error::Repository secret SUPABASE_URL is missing or empty. Add it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          if [ -z "${SUPABASE_ANON_KEY:-}" ]; then
+            echo "::error::Repository secret SUPABASE_ANON_KEY is missing or empty. Add it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+          # Query a real table. The previous version pinged /rest/v1/, which
+          # PostgREST answers from its own auth layer with 401 ("Only the
+          # service_role API key can be used for this endpoint") -- no query
+          # ever reached Postgres, so nothing was keeping the database awake.
+          #
+          # community_settings is protected by RLS, so the anon key gets an
+          # empty array back: the query really runs, no data is exposed.
+          status=$(curl -sS -o response.txt -w '%{http_code}' \
+            "${SUPABASE_URL}/rest/v1/community_settings?select=id&limit=1" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")
+
+          # Check the status explicitly: plain `curl -s` exits 0 on a 401, so
+          # the old step reported success while doing nothing useful.
+          if [ "${status}" != "200" ]; then
+            echo "::error::Supabase keep-alive query returned HTTP ${status}"
+            cat response.txt
+            exit 1
+          fi
+
+          echo "Supabase keep-alive query OK (HTTP 200)."
