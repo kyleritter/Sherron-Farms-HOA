@@ -6,10 +6,11 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 // Verify this against whatever's current in Google AI Studio before
 // deploying — Gemini model IDs get renamed/retired periodically, and
-// free-tier rate limits (RPM/RPD) vary by model. gemini-2.0-flash was
-// retired; using gemini-3.1-flash-lite for a much higher free-tier
-// daily request quota (1000/day vs 20/day for gemini-3.6-flash).
-const GEMINI_MODEL = "gemini-3.1-flash-lite";
+// free-tier rate limits (RPM/RPD) vary by model. Using
+// gemini-3.5-flash-lite (upgraded from gemini-3.1-flash-lite, same
+// free-tier quota): ~500 requests/day and 15/min vs 20/day for the
+// 3.5–3.8 Flash models. Keep in sync with src/lib/gemini.ts.
+const GEMINI_MODEL = "gemini-3.5-flash-lite";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();

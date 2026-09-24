@@ -6,8 +6,8 @@ Guidelines, Amendments, meeting minutes) and get answers with exact
 document/section/page citations.
 
 Stack: Next.js (App Router) on Vercel, Supabase (Postgres + pgvector +
-Auth), Google Gemini (`gemini-2.0-flash` + `text-embedding-004` via AI
-Studio). See `HOA_AI_Assistant_Architecture_Spec.md` (in the project's
+Auth), Google Gemini (`gemini-3.5-flash-lite` for chat + `gemini-embedding-001`
+at 768 dimensions via AI Studio). See `HOA_AI_Assistant_Architecture_Spec.md` (in the project's
 Google Drive folder) for the full design.
 
 ## How access works
