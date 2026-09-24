@@ -97,6 +97,11 @@ FILES = [
         "document_type": "Minutes",
     },
     {
+        "path": OUTPUT_DIR / "minutes_2026_08_06.json",
+        "document_name": "Minutes - August 6, 2026.pdf",
+        "document_type": "Minutes",
+    },
+    {
         "path": OUTPUT_DIR / "pool_rules_2026.json",
         "document_name": "Pool Rules - 2026.pdf",
         "document_type": "Pool Rules",

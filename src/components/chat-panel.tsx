@@ -17,6 +17,7 @@ const CITATION_LABELS: Record<string, string> = {
   "Bylaws.pdf": "Bylaws",
   "ARC Guidelines.pdf": "ARC Guidelines",
   "Articles of Incorporation.pdf": "Articles of Incorporation",
+  "Minutes - August 6, 2026.pdf": "Minutes, August 6, 2026",
   "Minutes - June 11, 2026.pdf": "Minutes, June 11, 2026",
   "Minutes - May 14, 2026.pdf": "Minutes, May 14, 2026",
   "Minutes - March 12, 2026.pdf": "Minutes, March 12, 2026",

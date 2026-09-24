@@ -35,6 +35,7 @@ FILES = [
     ("2026_03_12 Minutes (Board Meeting and Due Process).pdf", "Minutes - March 12, 2026.pdf"),
     ("May 14th Meeting Minutes.pdf", "Minutes - May 14, 2026.pdf"),
     ("6112026 Meeting Minutes.pdf", "Minutes - June 11, 2026.pdf"),
+    ("Meeting Minutes August 6th.pdf", "Minutes - August 6, 2026.pdf"),
 ]
 
 for src_name, dest_name in FILES:

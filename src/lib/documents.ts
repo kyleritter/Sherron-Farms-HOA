@@ -48,6 +48,7 @@ export const FINANCIAL_DOCUMENT_NAMES: readonly string[] =
 // drives the most-recent-first sort; uploaded via
 // scripts/upload_minutes_pdfs.py.
 export const MINUTES_DOCUMENTS = [
+  { name: "Minutes - August 6, 2026.pdf", label: "August 6, 2026", date: "2026-08-06" },
   { name: "Minutes - June 11, 2026.pdf", label: "June 11, 2026", date: "2026-06-11" },
   { name: "Minutes - May 14, 2026.pdf", label: "May 14, 2026", date: "2026-05-14" },
   { name: "Minutes - March 12, 2026.pdf", label: "March 12, 2026", date: "2026-03-12" },
