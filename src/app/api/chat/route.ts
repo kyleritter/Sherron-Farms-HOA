@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { embedQuery } from "@/lib/gemini";
+import { logChat } from "@/lib/chat-log";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
@@ -20,7 +21,11 @@ const GEMINI_MODEL = "gemini-3.5-flash-lite";
 // dimensions, or text formats in src/lib/gemini.ts change.
 const CHUNK_MATCH_THRESHOLD = 0.6;
 
+const THINKING_LEVEL = ThinkingLevel.MEDIUM;
+
 export async function POST(req: NextRequest) {
+  // Request start, for the latency fields logged to chat_logs.
+  const t0 = Date.now();
   const supabase = await createClient();
 
   // 1. Verify user authentication and approval
@@ -62,8 +67,28 @@ export async function POST(req: NextRequest) {
     ? `${recentContext}\nResident: ${latestMessage}`
     : latestMessage;
 
+  // Fields shared by every chat_logs row for this request.
+  const logBase = {
+    user_id: user.id,
+    prompt: latestMessage,
+    retrieval_query: retrievalQuery,
+    turn_index: messages.filter((m) => m.role === "user").length,
+    model: GEMINI_MODEL,
+    thinking_level: THINKING_LEVEL,
+    match_threshold: CHUNK_MATCH_THRESHOLD,
+  };
+
   // 2. Embed user question (gemini-embedding-2; see src/lib/gemini.ts)
-  const queryEmbedding = await embedQuery(retrievalQuery);
+  const tRetrieval = Date.now();
+  let queryEmbedding: number[];
+  try {
+    queryEmbedding = await embedQuery(retrievalQuery);
+  } catch (e) {
+    after(() =>
+      logChat({ ...logBase, status: "error", error: `embed: ${String(e)}`, total_ms: Date.now() - t0 })
+    );
+    throw e;
+  }
 
   // 3. Retrieve relevant chunks from Supabase RPC
   const { data: chunks, error: rpcError } = await supabase.rpc(
@@ -75,7 +100,34 @@ export async function POST(req: NextRequest) {
     }
   );
 
+  const retrievalMs = Date.now() - tRetrieval;
+  const chunkSummary = (chunks ?? []).map(
+    (c: {
+      id: number;
+      document_name: string;
+      page_number: number;
+      section_title: string;
+      similarity: number;
+    }) => ({
+      id: c.id,
+      document_name: c.document_name,
+      page_number: c.page_number,
+      section_title: c.section_title,
+      similarity: Math.round(c.similarity * 1000) / 1000,
+    })
+  );
+
   if (rpcError || !chunks || chunks.length === 0) {
+    after(() =>
+      logChat({
+        ...logBase,
+        status: rpcError ? "error" : "no_chunks",
+        error: rpcError ? `rpc: ${rpcError.message}` : null,
+        retrieval_ms: retrievalMs,
+        total_ms: Date.now() - t0,
+        chunks: chunkSummary,
+      })
+    );
     return NextResponse.json({
       role: "assistant",
       content:
@@ -125,24 +177,54 @@ RULES:
   }));
   const finalPrompt = `Context Excerpts:\n${contextText}\n\nResident Question: ${latestMessage}`;
 
-  const responseStream = await ai.models.generateContentStream({
-    model: GEMINI_MODEL,
-    // System instructions go in `config.systemInstruction`, NOT as a
-    // {role: "system"} message inside `contents` — Gemini's contents
-    // roles are "user" / "model" only.
-    config: {
-      systemInstruction,
-      // gemini-3.5-flash-lite defaults to MINIMAL thinking. MEDIUM gives it
-      // room to reconcile multiple excerpts (e.g. CC&Rs vs. ARC Guidelines
-      // vs. later minutes) before answering, at the cost of some latency
-      // and extra (thinking) output tokens. Options: MINIMAL/LOW/MEDIUM/HIGH.
-      thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
-    },
-    contents: [...priorTurns, { role: "user", parts: [{ text: finalPrompt }] }],
-  });
+  let responseStream: Awaited<ReturnType<typeof ai.models.generateContentStream>>;
+  try {
+    responseStream = await ai.models.generateContentStream({
+      model: GEMINI_MODEL,
+      // System instructions go in `config.systemInstruction`, NOT as a
+      // {role: "system"} message inside `contents` — Gemini's contents
+      // roles are "user" / "model" only.
+      config: {
+        systemInstruction,
+        // gemini-3.5-flash-lite defaults to MINIMAL thinking. MEDIUM gives it
+        // room to reconcile multiple excerpts (e.g. CC&Rs vs. ARC Guidelines
+        // vs. later minutes) before answering, at the cost of some latency
+        // and extra (thinking) output tokens. Options: MINIMAL/LOW/MEDIUM/HIGH.
+        thinkingConfig: { thinkingLevel: THINKING_LEVEL },
+      },
+      contents: [...priorTurns, { role: "user", parts: [{ text: finalPrompt }] }],
+    });
+  } catch (e) {
+    after(() =>
+      logChat({
+        ...logBase,
+        status: "error",
+        error: `generate: ${String(e)}`,
+        retrieval_ms: retrievalMs,
+        total_ms: Date.now() - t0,
+        chunks: chunkSummary,
+      })
+    );
+    throw e;
+  }
 
   // 6. Stream tokens back to the browser
+  // Collect the full answer, token usage and timing as it streams, then
+  // write one chat_logs row via after() once the response has finished --
+  // so logging adds no latency for the resident.
   const encoder = new TextEncoder();
+  let responseText = "";
+  let firstTokenMs: number | null = null;
+  let usage: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    thoughtsTokenCount?: number;
+    totalTokenCount?: number;
+  } | null = null;
+  let streamError: string | null = null;
+  let finishStream!: () => void;
+  const streamDone = new Promise<void>((resolve) => (finishStream = resolve));
+
   const stream = new ReadableStream({
     async start(controller) {
       try {
@@ -150,12 +232,40 @@ RULES:
           // `chunk.text` is a property, not a method, in the
           // @google/genai JS SDK.
           const text = chunk.text;
-          if (text) controller.enqueue(encoder.encode(text));
+          if (chunk.usageMetadata) usage = chunk.usageMetadata;
+          if (text) {
+            if (firstTokenMs === null) firstTokenMs = Date.now() - t0;
+            responseText += text;
+            controller.enqueue(encoder.encode(text));
+          }
         }
+      } catch (e) {
+        streamError = `stream: ${String(e)}`;
+        throw e;
       } finally {
         controller.close();
+        finishStream();
       }
     },
+  });
+
+  after(async () => {
+    await streamDone;
+    const u = usage as typeof usage;
+    await logChat({
+      ...logBase,
+      status: streamError ? "error" : "ok",
+      error: streamError,
+      response: responseText,
+      prompt_tokens: u?.promptTokenCount ?? null,
+      output_tokens: u?.candidatesTokenCount ?? null,
+      thinking_tokens: u?.thoughtsTokenCount ?? null,
+      total_tokens: u?.totalTokenCount ?? null,
+      retrieval_ms: retrievalMs,
+      time_to_first_token_ms: firstTokenMs,
+      total_ms: Date.now() - t0,
+      chunks: chunkSummary,
+    });
   });
 
   return new Response(stream, {

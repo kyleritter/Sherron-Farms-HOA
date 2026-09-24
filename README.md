@@ -48,6 +48,8 @@ supabase/migrations/   SQL schema, RLS policies, vector match RPC
 scripts/ingest.py      local PDF -> chunks -> embeddings -> Supabase
 scripts/ingest_from_unstructured.py  Unstructured JSON -> embeddings -> Supabase
 scripts/backfill_embeddings_v2.py    re-embed rows already in Supabase (no re-parse)
+src/lib/chat-log.ts    writes one public.chat_logs row per chat request (prompt,
+                       response, tokens, latency, retrieved chunks); server-only
 documents_raw/         drop source PDFs here before running ingest.py
 .github/workflows/     keep-alive ping so Supabase free tier doesn't pause
 ```
