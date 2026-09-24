@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { embedQuery } from "@/lib/gemini";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
@@ -132,6 +132,11 @@ RULES:
     // roles are "user" / "model" only.
     config: {
       systemInstruction,
+      // gemini-3.5-flash-lite defaults to MINIMAL thinking. MEDIUM gives it
+      // room to reconcile multiple excerpts (e.g. CC&Rs vs. ARC Guidelines
+      // vs. later minutes) before answering, at the cost of some latency
+      // and extra (thinking) output tokens. Options: MINIMAL/LOW/MEDIUM/HIGH.
+      thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
     },
     contents: [...priorTurns, { role: "user", parts: [{ text: finalPrompt }] }],
   });
