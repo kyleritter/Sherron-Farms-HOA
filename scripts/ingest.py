@@ -8,7 +8,7 @@ Usage:
     python scripts/ingest.py
 
 Reads PDFs from ./documents_raw, parses + chunks them with `unstructured`,
-embeds each chunk with Gemini's text-embedding-004, and upserts into the
+embeds each chunk with gemini-embedding-2 (3072 dims), and upserts into the
 `hoa_document_chunks` table via the Supabase service-role key (bypasses RLS
 for insertion — never expose that key outside this script).
 """
@@ -39,14 +39,14 @@ ai_client = genai.Client(api_key=GEMINI_API_KEY)
 DOCS_DIRECTORY = "./documents_raw"
 
 
-def get_embedding(text: str) -> list[float]:
-    # text-embedding-004 was retired; gemini-embedding-001 is current.
-    # output_dimensionality pins it to 768 to match hoa_document_chunks'
-    # VECTOR(768) column -- keep in sync with src/lib/gemini.ts.
+def get_embedding(section_title: str, content: str) -> list[float]:
+    # gemini-embedding-2 at 3072 dims -> halfvec(3072) `embedding_v2`.
+    # No task_type parameter: documents use the "title: ... | text: ..."
+    # format. Keep in sync with src/lib/gemini.ts.
     response = ai_client.models.embed_content(
-        model="gemini-embedding-001",
-        contents=text,
-        config={"output_dimensionality": 768},
+        model="gemini-embedding-2",
+        contents=f"title: {section_title or 'none'} | text: {content}",
+        config={"output_dimensionality": 3072},
     )
     return response.embeddings[0].values
 
@@ -104,7 +104,7 @@ def process_and_ingest():
             )
 
             # 3. Generate embedding
-            embedding = get_embedding(chunk_text)
+            embedding = get_embedding(section_title, chunk_text)
 
             # 4. Store in Supabase
             supabase.table("hoa_document_chunks").insert(
@@ -114,7 +114,7 @@ def process_and_ingest():
                     "page_number": page_num,
                     "section_title": section_title,
                     "content": chunk_text,
-                    "embedding": embedding,
+                    "embedding_v2": embedding,
                 }
             ).execute()
 

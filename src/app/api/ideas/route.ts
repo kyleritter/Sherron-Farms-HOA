@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { ai, GEMINI_MODEL, embedText } from "@/lib/gemini";
+import { ai, GEMINI_MODEL, embedIdea } from "@/lib/gemini";
 import { regenerateTopicSummary } from "@/lib/ideas";
 
 const CATEGORIES = ["amendment", "arc", "event", "question", "other"] as const;
 type Category = (typeof CATEGORIES)[number];
+
+// Minimum cosine similarity for a new idea to merge into an existing open
+// topic. Calibrated for gemini-embedding-2 (3072 dims, sentence-similarity
+// format in src/lib/gemini.ts) on sample idea pairs (2026-09-24): true
+// duplicates scored 0.92-0.96, related-but-different ideas 0.84-0.85,
+// unrelated ~0.75. (The old 0.83 would wrongly merge related ideas under
+// this model.) Re-check if the model or text format changes.
+const IDEA_MATCH_THRESHOLD = 0.89;
 
 // Categorizes a new idea with the model instead of asking the resident
 // to pick from a dropdown -- only called when a submission doesn't
@@ -75,11 +83,11 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
 
   // 1. Embed the new idea and see if it matches an existing open topic.
-  const embedding = await embedText(`${title}\n${ideaBody}`);
+  const embedding = await embedIdea(title, ideaBody);
 
-  const { data: match } = await admin.rpc("match_idea_topic", {
+  const { data: match } = await admin.rpc("match_idea_topic_v2", {
     query_embedding: embedding,
-    match_threshold: 0.83,
+    match_threshold: IDEA_MATCH_THRESHOLD,
   });
 
   let topicId: string;
@@ -112,7 +120,7 @@ export async function POST(req: NextRequest) {
     is_anonymous: isAnonymous,
     title,
     body: ideaBody,
-    embedding,
+    embedding_v2: embedding,
   });
   if (ideaError) {
     return NextResponse.json({ error: "Couldn't save the idea." }, { status: 500 });

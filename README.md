@@ -6,8 +6,8 @@ Guidelines, Amendments, meeting minutes) and get answers with exact
 document/section/page citations.
 
 Stack: Next.js (App Router) on Vercel, Supabase (Postgres + pgvector +
-Auth), Google Gemini (`gemini-3.5-flash-lite` for chat + `gemini-embedding-001`
-at 768 dimensions via AI Studio). See `HOA_AI_Assistant_Architecture_Spec.md` (in the project's
+Auth), Google Gemini (`gemini-3.5-flash-lite` for chat + `gemini-embedding-2`
+at 3072 dimensions, stored as pgvector `halfvec`, via AI Studio). See `HOA_AI_Assistant_Architecture_Spec.md` (in the project's
 Google Drive folder) for the full design.
 
 ## How access works
@@ -46,6 +46,8 @@ src/lib/address.ts     normalizes a typed street address for comparison
 src/proxy.ts           route gating (/chat, /admin)
 supabase/migrations/   SQL schema, RLS policies, vector match RPC
 scripts/ingest.py      local PDF -> chunks -> embeddings -> Supabase
+scripts/ingest_from_unstructured.py  Unstructured JSON -> embeddings -> Supabase
+scripts/backfill_embeddings_v2.py    re-embed rows already in Supabase (no re-parse)
 documents_raw/         drop source PDFs here before running ingest.py
 .github/workflows/     keep-alive ping so Supabase free tier doesn't pause
 ```
@@ -89,6 +91,15 @@ documents_raw/         drop source PDFs here before running ingest.py
    - Drop the HOA's PDFs into `documents_raw/`.
    - `python scripts/ingest.py`
    - Re-run whenever a document is added, replaced, or amended.
+   - Embeddings: `gemini-embedding-2`, 3072 dims, written to the
+     `embedding_v2` columns and searched via `match_hoa_chunks_v2` /
+     `match_idea_topic_v2` (migration `0007_embedding_v2.sql`). It has no
+     task_type parameter -- documents are embedded as
+     `title: <section> | text: <content>` and questions as
+     `task: search result | query: <question>` (see `src/lib/gemini.ts`).
+     If the model or those formats ever change, re-embed everything with
+     `python3 scripts/backfill_embeddings_v2.py` and re-calibrate the
+     match thresholds in the chat and ideas API routes.
 
 6. **Keep-alive workflow**
    - Add `SUPABASE_URL` and `SUPABASE_ANON_KEY` as GitHub Actions repo

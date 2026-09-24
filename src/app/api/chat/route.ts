@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { GoogleGenAI } from "@google/genai";
+import { embedQuery } from "@/lib/gemini";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
@@ -11,6 +12,13 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 // free-tier quota): ~500 requests/day and 15/min vs 20/day for the
 // 3.5–3.8 Flash models. Keep in sync with src/lib/gemini.ts.
 const GEMINI_MODEL = "gemini-3.5-flash-lite";
+
+// Minimum cosine similarity for a chunk to count as relevant. Calibrated
+// for gemini-embedding-2 (3072 dims) on 16 typical resident questions plus
+// off-topic controls (2026-09-24): relevant top-5 hits scored 0.65-0.82,
+// off-topic questions topped out at 0.57. Re-check if the embedding model,
+// dimensions, or text formats in src/lib/gemini.ts change.
+const CHUNK_MATCH_THRESHOLD = 0.6;
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -54,24 +62,15 @@ export async function POST(req: NextRequest) {
     ? `${recentContext}\nResident: ${latestMessage}`
     : latestMessage;
 
-  // 2. Embed user question
-  // text-embedding-004 was retired; gemini-embedding-001 is current.
-  // outputDimensionality pins it to 768 to match hoa_document_chunks'
-  // VECTOR(768) column and match_hoa_chunks' signature -- keep this in
-  // sync with src/lib/gemini.ts's EMBEDDING_MODEL/EMBEDDING_DIMENSIONS.
-  const embedResponse = await ai.models.embedContent({
-    model: "gemini-embedding-001",
-    contents: retrievalQuery,
-    config: { outputDimensionality: 768 },
-  });
-  const queryEmbedding = embedResponse.embeddings![0].values;
+  // 2. Embed user question (gemini-embedding-2; see src/lib/gemini.ts)
+  const queryEmbedding = await embedQuery(retrievalQuery);
 
   // 3. Retrieve relevant chunks from Supabase RPC
   const { data: chunks, error: rpcError } = await supabase.rpc(
-    "match_hoa_chunks",
+    "match_hoa_chunks_v2",
     {
       query_embedding: queryEmbedding,
-      match_threshold: 0.45,
+      match_threshold: CHUNK_MATCH_THRESHOLD,
       match_count: 5,
     }
   );

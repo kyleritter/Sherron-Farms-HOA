@@ -6,7 +6,7 @@ chunk=chunk_by_title) into the `hoa_document_chunks` table.
 This is the second half of the pipeline -- parsing happens via the
 Unstructured Transform MCP tools (run by Claude), which produce one
 Element JSON file per source PDF under ./unstructured_output/. This
-script embeds each chunk with Gemini and upserts into Supabase. Runs
+script embeds each chunk with gemini-embedding-2 and upserts into Supabase. Runs
 entirely locally so SUPABASE_SERVICE_ROLE_KEY and GEMINI_API_KEY never
 have to leave this machine.
 
@@ -44,16 +44,17 @@ if not (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY and GEMINI_API_KEY):
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 ai_client = genai.Client(api_key=GEMINI_API_KEY)
 
-# text-embedding-004 was retired -- gemini-embedding-001 is current.
-# output_dimensionality pins it to 768 to match hoa_document_chunks'
-# VECTOR(768) column. Keep this in sync with src/lib/gemini.ts.
-EMBEDDING_MODEL = "gemini-embedding-001"
-EMBEDDING_DIMENSIONS = 768
+# gemini-embedding-2 at full 3072 dims, written to the halfvec(3072)
+# `embedding_v2` column. It has no task_type parameter: documents are
+# embedded as "title: {section_title} | text: {content}". Keep the model,
+# dimensions and this format in sync with src/lib/gemini.ts and
+# scripts/backfill_embeddings_v2.py.
+EMBEDDING_MODEL = "gemini-embedding-2"
+EMBEDDING_DIMENSIONS = 3072
 
-# Free-tier embed_content quota is 100 requests/minute. Pace requests
-# well under that and back off with the server's own retry-after on
-# a 429 rather than guessing.
-SECONDS_BETWEEN_CALLS = 0.75
+# Free-tier embedding quotas aren't published. Pace at ~1 request/sec and
+# back off with the server's own retry-after on a 429 rather than guessing.
+SECONDS_BETWEEN_CALLS = 1.1
 MAX_RETRIES = 6
 
 OUTPUT_DIR = Path("unstructured_output")
@@ -122,7 +123,8 @@ def guess_section_title(text: str, page_number: int) -> str:
     return f"Section near p. {page_number}"
 
 
-def get_embedding(text: str) -> list[float]:
+def get_embedding(section_title: str, content: str) -> list[float]:
+    text = f"title: {section_title or 'none'} | text: {content}"
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             response = ai_client.models.embed_content(
@@ -177,7 +179,7 @@ def ingest_file(spec: dict, start: int = 0, end: int | None = None, clear: bool 
         page_number = el.get("metadata", {}).get("page_number") or 1
         section_title = guess_section_title(text, page_number)
 
-        embedding = get_embedding(text)
+        embedding = get_embedding(section_title, text)
 
         supabase.table("hoa_document_chunks").insert(
             {
@@ -186,7 +188,7 @@ def ingest_file(spec: dict, start: int = 0, end: int | None = None, clear: bool 
                 "section_title": section_title,
                 "page_number": page_number,
                 "content": text,
-                "embedding": embedding,
+                "embedding_v2": embedding,
             }
         ).execute()
         inserted += 1
